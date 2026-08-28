@@ -19,9 +19,18 @@ const props = defineProps<{
     roles: string[];
 }>();
 
+const roleLabels: Record<string, string> = {
+    super_admin: 'Super Admin',
+    admin: 'Admin',
+    inspector: 'Inspector/QA',
+    user: 'User',
+};
+
+const roleOptions = props.roles.map((r) => ({ label: roleLabels[r] ?? r, value: r }));
+
 const roleSel = reactive<Record<number, string>>({});
 props.users.data.forEach((u) => {
-    roleSel[u.id] = (u.requested_role ?? u.roles?.[0]?.name) ?? 'inspector';
+    roleSel[u.id] = (u.requested_role ?? u.roles?.[0]?.name) ?? 'user';
 });
 
 const approve = (u: any) => {
@@ -77,7 +86,7 @@ const activeUsers = props.users.data.filter((u) => u.is_approved);
                 v-model="roleSel[u.id]"
                 placeholder="Role"
                 size="small"
-                :options="roles.map((r) => ({ label: r, value: r }))"
+                :options="roleOptions"
             />
             <var-button type="primary" size="small" @click="approve(u)">Setujui</var-button>
         </div>
@@ -91,14 +100,14 @@ const activeUsers = props.users.data.filter((u) => u.is_approved);
         <div class="user-info">
             <span class="user-name">{{ u.name }}</span>
             <span class="user-meta">{{ u.email }} • NIK: {{ u.nik }}</span>
-            <var-chip type="success" size="mini" round>{{ u.roles?.[0]?.name ?? '—' }}</var-chip>
+            <var-chip type="success" size="mini" round>{{ roleLabels[u.roles?.[0]?.name] ?? '—' }}</var-chip>
         </div>
         <div class="user-actions">
             <var-select
                 v-model="roleSel[u.id]"
                 placeholder="Role"
                 size="small"
-                :options="roles.map((r) => ({ label: r, value: r }))"
+                :options="roleOptions"
             />
             <var-button size="small" text @click="changeRole(u)">Ubah Role</var-button>
             <var-button size="small" text type="danger" @click="deactivate(u)">Nonaktifkan</var-button>
@@ -207,3 +216,5 @@ const activeUsers = props.users.data.filter((u) => u.is_approved);
     color: #64748b;
 }
 </style>
+
+

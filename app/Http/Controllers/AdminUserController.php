@@ -18,13 +18,13 @@ class AdminUserController extends Controller
 
         return Inertia::render('Users/Index', [
             'users' => $users,
-            'roles' => ['inspector', 'admin', 'admin_master'],
+            'roles' => ['super_admin', 'admin', 'inspector', 'user'],
         ]);
     }
 
     public function approve(User $user, Request $request)
     {
-        $request->validate(['role' => 'required|in:inspector,admin,admin_master']);
+        $request->validate(['role' => 'required|in:super_admin,admin,inspector,user']);
 
         $user->syncRoles([$request->role]);
         $user->update([
@@ -37,7 +37,7 @@ class AdminUserController extends Controller
 
     public function updateRole(User $user, Request $request)
     {
-        $request->validate(['role' => 'required|in:inspector,admin,admin_master']);
+        $request->validate(['role' => 'required|in:super_admin,admin,inspector,user']);
 
         $user->syncRoles([$request->role]);
 

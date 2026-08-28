@@ -34,7 +34,8 @@ SI KARTO — Sistem Kalibrasi Toleransi Operasional Alat Ukur Rutin Bulanan. PRD
 - Font Inter (`@fontsource/inter`). Transisi halaman slide via `<Transition>` di `app.ts`.
 
 ## Otorisasi
-- Spatie (`spatie/laravel-permission`), config `config/permission.php`. Role: `admin_master`, `admin`, `inspector`. Users table tanpa kolom role — pakai Spatie.
+- Spatie (`spatie/laravel-permission`), config `config/permission.php`. Role: `super_admin`, `admin`, `inspector`, `user`. Users table tanpa kolom role — pakai Spatie.
+- `super_admin` = full (master + user.manage + test + report). `admin` = master CRUD + test.read + report.read/export (BUKAN test.create, BUKAN user.manage). `inspector` = test.create + test.read. `user` = read-only (master.read, test.read, report.read).
 - Endpoint harus cek permission, bukan hanya role. Semua form validasi server-side (jangan percaya browser).
 
 ## SSO Login (Manual Provisioning)
@@ -62,8 +63,8 @@ SI KARTO — Sistem Kalibrasi Toleransi Operasional Alat Ukur Rutin Bulanan. PRD
 - **Varlet Form**: pakai prop `:onsubmit="fn"` (handler terima `valid: boolean`, guard `if (!valid) return`). JANGAN `@submit.prevent` — `.prevent` bungkus handler, Varlet panggil `onSubmit(valid)` → `valid.preventDefault()` crash ("e.preventDefault is not a function").
 - **Varlet API yang TIDAK ada** (cek `node_modules/@varlet/ui/types/*.d.ts` dulu): `var-avatar` tidak punya `text-color`; `var-input` tidak punya `focus` (pakai `autofocus`).
 - MCP Varlet: package npm yang benar **`@fe-fast/varlet-mcp`** (di `opencode.json`). `@varlet/mcp` 404 — jangan dipakai. Registry MCP parsial: `var-app-bar`, `var-bottom-navigation`, `var-chip`, `var-select` dll TIDAK ada di MCP — cek types lokal.
-- Role/permission endpoint: cek `permission:` middleware. Role list: `admin_master`, `admin`, `inspector`. Inspector TIDAK bisa akses master/report.
+- Role/permission endpoint: cek `permission:` middleware. Role list: `super_admin`, `admin`, `inspector`, `user`. Inspector & User TIDAK bisa akses master CRUD.
 - **Paginator Inertia TIDAK punya key `meta`** — keys top-level: `current_page`, `last_page`, `from`, `to`, `total`, `data`. JANGAN `items.meta.current_page` (undefined → crash render). Pakai `items.current_page`.
 - **Semua URL di JS wajib pakai Ziggy `route()`** — app di subfolder `/sikarto/public`; URL hardcoded (`/auth/sso`, `/pending-role`, dll) jadi `http://localhost/...` → 404. Khusus link eksternal (redirect SSO) pakai `<a :href="route('sso.redirect')">`.
 - AppLayout top bar minimal: judul halaman + back (sub-page) + search icon (list) + plus hijau (create) + logout icon `power`. Bottom nav & FAB HANYA di halaman dashboard. **Dashboard appbar = nama user yang login** (bukan brand).
-- Pending-role (`/pending-role`): user baru pilih role `admin_master`/`admin`/`inspector` + factory. Footer login: "Departemen QA".
+- Pending-role (`/pending-role`): user baru pilih role `super_admin`/`admin`/`inspector`/`user` + factory. Footer login: "Departemen QA".

@@ -24,13 +24,19 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission]);
         }
 
-        $adminMaster = Role::firstOrCreate(['name' => 'admin_master']);
-        $adminMaster->syncPermissions($permissions);
+        $superAdmin = Role::firstOrCreate(['name' => 'super_admin']);
+        $superAdmin->syncPermissions($permissions);
 
         $admin = Role::firstOrCreate(['name' => 'admin']);
-        $admin->syncPermissions(['master.read', 'test.read', 'report.read', 'report.export']);
+        $admin->syncPermissions([
+            'master.create', 'master.read', 'master.update', 'master.delete',
+            'test.read', 'report.read', 'report.export',
+        ]);
 
         $inspector = Role::firstOrCreate(['name' => 'inspector']);
         $inspector->syncPermissions(['test.create', 'test.read']);
+
+        $user = Role::firstOrCreate(['name' => 'user']);
+        $user->syncPermissions(['master.read', 'test.read', 'report.read']);
     }
 }

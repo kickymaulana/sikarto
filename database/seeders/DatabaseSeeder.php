@@ -78,35 +78,15 @@ class DatabaseSeeder extends Seeder
             AcceptableLimit::create($l);
         }
 
-        $adminMaster = User::create([
-            'name' => 'Admin Master',
-            'email' => 'admin.master@sikarto.test',
-            'password' => 'password',
-            'factory_id' => $factories->first()->id,
-            'nik' => 'KD220004',
-            'is_approved' => true,
-        ]);
-        $adminMaster->assignRole('admin_master');
-
-        $admin = User::create([
-            'name' => 'Admin',
-            'email' => 'admin@sikarto.test',
-            'password' => 'password',
+        $superAdmin = User::create([
+            'name' => 'Kicky Maulana',
+            'email' => 'kickymaulana@gmail.com',
+            'password' => 'password123',
             'factory_id' => $factories->first()->id,
             'nik' => 'D260065',
             'is_approved' => true,
         ]);
-        $admin->assignRole('admin');
-
-        $inspector = User::create([
-            'name' => 'Inspector QC',
-            'email' => 'inspector@sikarto.test',
-            'password' => 'password',
-            'factory_id' => $factories->first()->id,
-            'nik' => 'K190327',
-            'is_approved' => true,
-        ]);
-        $inspector->assignRole('inspector');
+        $superAdmin->assignRole('super_admin');
 
         $firstDept = Department::first();
         $timbangan = InstrumentType::where('name', 'Timbangan')->first();
@@ -139,7 +119,7 @@ class DatabaseSeeder extends Seeder
             'instrument_id' => $instrument->id,
             'test_date' => now()->subMonth()->toDateString(),
             'next_test_date' => now()->toDateString(),
-            'tester_id' => $inspector->id,
+            'tester_id' => $superAdmin->id,
             'status' => 'PASS',
         ]);
         foreach ($instrument->type->standards as $s) {

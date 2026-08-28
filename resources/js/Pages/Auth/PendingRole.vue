@@ -46,9 +46,10 @@ const submit = () => {
                         v-model="form.role"
                         placeholder="Pilih Peran"
                         :options="[
-                            { label: 'Admin Master', value: 'admin_master' },
+                            { label: 'Super Admin', value: 'super_admin' },
                             { label: 'Admin', value: 'admin' },
-                            { label: 'Inspector / QC', value: 'inspector' },
+                            { label: 'Inspector / QA', value: 'inspector' },
+                            { label: 'User', value: 'user' },
                         ]"
                     />
                     <var-select

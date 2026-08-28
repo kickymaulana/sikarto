@@ -30,9 +30,9 @@ class UserApprovalTest extends TestCase
         return $user;
     }
 
-    public function test_admin_master_can_approve_pending_user(): void
+    public function test_super_admin_can_approve_pending_user(): void
     {
-        $admin = $this->makeUser('admin_master');
+        $admin = $this->makeUser('super_admin');
         $pending = $this->makeUser('inspector', [
             'email' => 'pending@test',
             'nik' => 'NIK123',

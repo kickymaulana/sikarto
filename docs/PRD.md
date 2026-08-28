@@ -34,43 +34,39 @@ Proses pengecekan dan kalibrasi rutin bulanan alat ukur di pabrik saat ini masih
 
 ## 2. User Roles & Permissions
 
-Manajemen role & permission memakai **`spatie/laravel-permission`**. Roles: `admin_master`, `admin`, `inspector`.
+Manajemen role & permission memakai **`spatie/laravel-permission`**. Roles: `super_admin`, `admin`, `inspector`, `user`.
 
-| Fitur | admin_master | admin | inspector |
-|---|---|---|---|
-| Login/Logout | ✅ | ✅ | ✅ |
-| CRUD Master Factory | ✅ | — | — |
-| CRUD Master Departemen | ✅ | — | — |
-| CRUD Master Jenis Alat | ✅ | — | — |
-| CRUD Master Merk | ✅ | — | — |
-| CRUD Master Kapasitas | ✅ | — | — |
-| CRUD Master Acceptable Limit | ✅ | — | — |
-| CRUD Master Alat Ukur | ✅ | — | — |
-| Kelola Pengguna | ✅ | — | — |
-| Entry Pengujian | ✅ | — | ✅ |
-| Lihat Riwayat Pengujian | ✅ | ✅ | ✅ (alat terkait) |
-| Dashboard & Scheduling | ✅ | ✅ | ✅ (diri sendiri) |
-| Laporan & Export Excel/PDF | ✅ | ✅ | — |
+| Fitur | super_admin | admin | inspector | user |
+|---|---|---|---|---|
+| Login/Logout | ✅ | ✅ | ✅ | ✅ |
+| CRUD semua master (Factory–Alat Ukur) | ✅ | ✅ | — | — |
+| Kelola Pengguna | ✅ | — | — | — |
+| Entry Pengujian | ✅ | — | ✅ | — |
+| Lihat Riwayat Pengujian | ✅ | ✅ | ✅ | ✅ |
+| Dashboard & Scheduling | ✅ | ✅ | ✅ | ✅ |
+| Laporan & Export Excel/PDF | ✅ | ✅ | — | — |
+| Lihat Laporan (read-only) | ✅ | ✅ | — | ✅
 
 **Aturan:**
 - `inspector` hanya input pengujian, tidak bisa edit/hapus master data.
-- `admin` read-only + laporan/export, tidak bisa entry pengujian.
-- `admin_master` full control: master, pengguna, pengujian, laporan.
+- `admin` bisa CRUD master + lihat laporan/export, tidak bisa entry pengujian dan tidak bisa kelola user.
+- `user` read-only: lihat dashboard, riwayat, dan laporan (tanpa export).
+- `super_admin` full control: master, pengguna, pengujian, laporan.
 - Semua perubahan master data dan pengujian tercatat (audit log: user, timestamp).
 - Alat ukur bisa dinonaktifkan (soft delete) tanpa menghapus riwayat.
 
 ### Permission (Spatie)
-| Permission | admin_master | admin | inspector |
-|---|---|---|---|
-| `master.create` | ✅ | — | — |
-| `master.read` | ✅ | ✅ | — |
-| `master.update` | ✅ | — | — |
-| `master.delete` | ✅ | — | — |
-| `user.manage` | ✅ | — | — |
-| `test.create` | ✅ | — | ✅ |
-| `test.read` | ✅ | ✅ | ✅ |
-| `report.read` | ✅ | ✅ | — |
-| `report.export` | ✅ | ✅ | — |
+| Permission | super_admin | admin | inspector | user |
+|---|---|---|---|---|
+| `master.create` | ✅ | ✅ | — | — |
+| `master.read` | ✅ | ✅ | — | ✅ |
+| `master.update` | ✅ | ✅ | — | — |
+| `master.delete` | ✅ | ✅ | — | — |
+| `user.manage` | ✅ | — | — | — |
+| `test.create` | ✅ | — | ✅ | — |
+| `test.read` | ✅ | ✅ | ✅ | ✅ |
+| `report.read` | ✅ | ✅ | — | ✅ |
+| `report.export` | ✅ | ✅ | — | — |
 
 ---
 
@@ -270,7 +266,7 @@ Referensi desain: aplikasi **SUKIRMAN** (`D:\Apache24\htdocs\sukirman`). Adopsi 
 
 ### 6.2 Security
 - **Autentikasi wajib SSO** (OAuth2 Authorization Code) — BUKAN email/password. SSO server `sekali_login` lokal (`http://localhost/sekali_login/public`), prod: `sekalilogin.gotechdynamics.com`. Client SI KARTO terdaftar (client_id `299dec87-8cd6-4882-b525-faa5ae86d853`, redirect `http://localhost/sikarto/public/callback`). Panduan: `public/SSO-Integrasi-Laravel-Manual-Provisioning.md`.
-- **Manual Provisioning**: user dicocokkan via `nik` (unique). NIK baru → auto-create `is_approved=false` → `/pending-role` (pilih role `admin_master`/`admin`/`inspector` + factory) → Admin setujui di `/users` (assign Spatie role + `is_approved=true`). User belum disetujui TIDAK bisa login.
+- **Manual Provisioning**: user dicocokkan via `nik` (unique). NIK baru → auto-create `is_approved=false` → `/pending-role` (pilih role `super_admin`/`admin`/`inspector`/`user` + factory) → Admin setujui di `/users` (assign Spatie role + `is_approved=true`). User belum disetujui TIDAK bisa login.
 - Autentikasi Laravel (session-based), CSRF aktif.
 - Otorisasi berbasis role & permission via **`spatie/laravel-permission`** (middleware/policy) — tiap endpoint cek permission.
 - Validasi input server-side (bukan hanya client) — jangan percaya data dari browser.

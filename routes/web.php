@@ -20,7 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', fn () => redirect()->route('dashboard'));
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Kelola user (approval manual provisioning) — admin_master only
+    // Kelola user (approval manual provisioning) — super_admin only
     Route::get('/users', [AdminUserController::class, 'index'])->name('users.index')
         ->middleware('permission:user.manage');
     Route::post('/users/{user}/approve', [AdminUserController::class, 'approve'])->name('users.approve')
