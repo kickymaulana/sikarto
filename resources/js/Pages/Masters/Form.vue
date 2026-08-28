@@ -69,13 +69,15 @@ const remove = () => {
                     :label="f.label"
                     :options="fieldOptions(f.options ?? '')"
                 />
-                <var-input
-                    v-else
-                    v-model="form[f.key]"
-                    :label="f.label"
-                    :type="f.type === 'number' ? 'number' : 'text'"
-                    :step="f.step"
-                />
+                <div v-else class="field-block">
+                    <label class="field-label">{{ f.label }}</label>
+                    <var-input
+                        v-model="form[f.key]"
+                        :placeholder="f.label"
+                        :type="f.type === 'number' ? 'number' : 'text'"
+                        :step="f.step"
+                    />
+                </div>
             </template>
         </var-space>
         <div class="form-actions">
