@@ -39,7 +39,7 @@ Manajemen role & permission memakai **`spatie/laravel-permission`**. Roles: `sup
 | Fitur | super_admin | admin | inspector | user |
 |---|---|---|---|---|
 | Login/Logout | ✅ | ✅ | ✅ | ✅ |
-| CRUD semua master (Factory–Alat Ukur) | ✅ | ✅ | — | — |
+| CRUD semua master (Factory–Alat Ukur) | ✅ | ✅ | ✅ | — |
 | Kelola Pengguna | ✅ | — | — | — |
 | Entry Pengujian | ✅ | — | ✅ | — |
 | Lihat Riwayat Pengujian | ✅ | ✅ | ✅ | ✅ |
@@ -48,7 +48,7 @@ Manajemen role & permission memakai **`spatie/laravel-permission`**. Roles: `sup
 | Lihat Laporan (read-only) | ✅ | ✅ | — | ✅
 
 **Aturan:**
-- `inspector` hanya input pengujian, tidak bisa edit/hapus master data.
+- `inspector` input pengujian + CRUD master data, tidak bisa kelola user/laporan.
 - `admin` bisa CRUD master + lihat laporan/export, tidak bisa entry pengujian dan tidak bisa kelola user.
 - `user` read-only: lihat dashboard, riwayat, dan laporan (tanpa export).
 - `super_admin` full control: master, pengguna, pengujian, laporan.
@@ -58,10 +58,10 @@ Manajemen role & permission memakai **`spatie/laravel-permission`**. Roles: `sup
 ### Permission (Spatie)
 | Permission | super_admin | admin | inspector | user |
 |---|---|---|---|---|
-| `master.create` | ✅ | ✅ | — | — |
-| `master.read` | ✅ | ✅ | — | ✅ |
-| `master.update` | ✅ | ✅ | — | — |
-| `master.delete` | ✅ | ✅ | — | — |
+| `master.create` | ✅ | ✅ | ✅ | — |
+| `master.read` | ✅ | ✅ | ✅ | ✅ |
+| `master.update` | ✅ | ✅ | ✅ | — |
+| `master.delete` | ✅ | ✅ | ✅ | — |
 | `user.manage` | ✅ | — | — | — |
 | `test.create` | ✅ | — | ✅ | — |
 | `test.read` | ✅ | ✅ | ✅ | ✅ |

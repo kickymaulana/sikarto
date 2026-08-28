@@ -99,10 +99,10 @@ class CalibrationTestTest extends TestCase
         $this->assertFalse($test->items()->get()[1]->is_within_limit);
     }
 
-    public function test_permission_middleware_blocks_inspector_from_master_crud(): void
+    public function test_permission_middleware_blocks_inspector_from_report_export(): void
     {
         $this->actingAs($this->inspector())
-            ->post('/masters/factories', ['code' => 'X', 'name' => 'X'])
+            ->get('/reports')
             ->assertForbidden();
     }
 }

@@ -34,7 +34,10 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
 
         $inspector = Role::firstOrCreate(['name' => 'inspector']);
-        $inspector->syncPermissions(['test.create', 'test.read']);
+        $inspector->syncPermissions([
+            'master.create', 'master.read', 'master.update', 'master.delete',
+            'test.create', 'test.read',
+        ]);
 
         $user = Role::firstOrCreate(['name' => 'user']);
         $user->syncPermissions(['master.read', 'test.read', 'report.read']);
