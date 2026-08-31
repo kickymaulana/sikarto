@@ -36,37 +36,35 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $typeStandards = [
-            'Timbangan' => [500, 700, 800, 1000],
-            'Caliper' => [10, 20, 30, 50],
-            'Rol Siku' => [90, 100, 150],
-            'Thermo Hunter' => [30, 60, 90],
-            'Stopwatch' => [60, 300, 600],
-            'Laser' => [1, 5, 10],
-        ];
-
-        foreach ($typeStandards as $name => $standards) {
-            $type = InstrumentType::create(['name' => $name]);
-            foreach ($standards as $i => $standard) {
-                StandardTemplate::create([
-                    'instrument_type_id' => $type->id,
-                    'standard_value' => $standard,
-                    'sort_order' => $i,
-                ]);
-            }
+        $typeNames = ['Timbangan', 'Caliper', 'Rol Siku', 'Thermo Hunter', 'Stopwatch', 'Laser'];
+        foreach ($typeNames as $name) {
+            InstrumentType::create(['name' => $name]);
         }
 
         foreach (['DICSON', 'Mitutoyo', 'Krisbow'] as $name) {
             Brand::create(['name' => $name]);
         }
 
-        foreach ([
-            ['name' => '3 KG', 'value' => 3, 'unit' => 'kg'],
-            ['name' => '500 KG', 'value' => 500, 'unit' => 'kg'],
-            ['name' => '150 MM', 'value' => 150, 'unit' => 'mm'],
-            ['name' => '2 KG', 'value' => 2, 'unit' => 'kg'],
-        ] as $c) {
-            Capacity::create($c);
+        $capacityData = [
+            ['name' => '3 KG', 'value' => 3, 'unit' => 'kg', 'standards' => [500, 700, 800, 1000]],
+            ['name' => '500 KG', 'value' => 500, 'unit' => 'kg', 'standards' => [100, 250, 500, 750, 1000]],
+            ['name' => '150 MM', 'value' => 150, 'unit' => 'mm', 'standards' => [10, 20, 30, 50]],
+            ['name' => '2 KG', 'value' => 2, 'unit' => 'kg', 'standards' => [200, 400, 600, 800]],
+        ];
+
+        foreach ($capacityData as $c) {
+            $capacity = Capacity::create([
+                'name' => $c['name'],
+                'value' => $c['value'],
+                'unit' => $c['unit'],
+            ]);
+            foreach ($c['standards'] as $i => $standard) {
+                StandardTemplate::create([
+                    'capacity_id' => $capacity->id,
+                    'standard_value' => $standard,
+                    'sort_order' => $i,
+                ]);
+            }
         }
 
         foreach ([
@@ -122,7 +120,7 @@ class DatabaseSeeder extends Seeder
             'tester_id' => $superAdmin->id,
             'status' => 'PASS',
         ]);
-        foreach ($instrument->type->standards as $s) {
+        foreach ($instrument->capacity->standards as $s) {
             CalibrationTestItem::create([
                 'calibration_test_id' => $test->id,
                 'standard_value' => $s->standard_value,

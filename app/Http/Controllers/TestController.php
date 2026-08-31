@@ -32,7 +32,7 @@ class TestController extends Controller
     public function create()
     {
         return Inertia::render('Tests/Create', [
-            'instruments' => Instrument::with(['type', 'type.standards', 'factory', 'department', 'brand', 'capacity', 'acceptableLimit'])
+            'instruments' => Instrument::with(['capacity.standards', 'factory', 'department', 'type', 'brand', 'acceptableLimit'])
                 ->orderBy('code')
                 ->get(),
         ]);

@@ -48,6 +48,7 @@ SI KARTO — Sistem Kalibrasi Toleransi Operasional Alat Ukur Rutin Bulanan. PRD
 - Default SQLite (`database/database.sqlite`). Prod: MySQL/MariaDB — ubah `.env`.
 - Index wajib: `instruments.code`, `calibration_tests.next_test_date`, `calibration_tests.instrument_id`.
 - `factories` & `departments` TIDAK punya kolom `code` (dihapus). Identitas = `name`. Departemen unik per factory via relasi, bukan code.
+- **Titik uji (`standard_templates`) per `capacity_id`** (KAPASITAS, bukan jenis alat). `Capacity::standards()` → hasMany. `/tests/create` load `instrument.capacity.standards`. UI kelola titik uji ada di form Kapasitas (`Masters/Form.vue` `standards` array → `MasterController::syncStandards`).
 
 ## Testing
 - `php artisan test` — feature test business logic PASS/FAIL + permission di `tests/Feature/CalibrationTestTest.php`.
@@ -66,5 +67,6 @@ SI KARTO — Sistem Kalibrasi Toleransi Operasional Alat Ukur Rutin Bulanan. PRD
 - Role/permission endpoint: cek `permission:` middleware. Role list: `super_admin`, `admin`, `inspector`, `user`. Inspector BISA master CRUD (sesuai permission); `user` read-only.
 - **Paginator Inertia TIDAK punya key `meta`** — keys top-level: `current_page`, `last_page`, `from`, `to`, `total`, `data`. JANGAN `items.meta.current_page` (undefined → crash render). Pakai `items.current_page`.
 - **Semua URL di JS wajib pakai Ziggy `route()`** — app di subfolder `/sikarto/public`; URL hardcoded (`/auth/sso`, `/pending-role`, dll) jadi `http://localhost/...` → 404. Khusus link eksternal (redirect SSO) pakai `<a :href="route('sso.redirect')">`.
+- **`route().current()` TIDAK reaktif** — saat navigasi Inertia SPA, computed yang bergantung padanya (pageTitle, showAdd, showBack, isDashboard) jadi stale sampai refresh. Fix: `AppLayout` pakai `watch(() => page.url)` → set `currentRoute`/`currentParams` (ref) → semua computed baca ref itu.
 - AppLayout top bar minimal: judul halaman + back (sub-page) + search icon (list) + plus hijau (create) + logout icon `power`. Bottom nav & FAB HANYA di halaman dashboard. **Dashboard appbar = nama user yang login** (bukan brand).
 - Pending-role (`/pending-role`): user baru pilih role `super_admin`/`admin`/`inspector`/`user` + factory. Footer login: "Departemen QA".

@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
-import { route } from 'ziggy-js';
 
 const page = usePage();
 const errorMessage = computed(() => {

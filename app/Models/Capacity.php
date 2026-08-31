@@ -10,4 +10,9 @@ class Capacity extends Model
     use SoftDeletes;
 
     protected $fillable = ['name', 'value', 'unit'];
+
+    public function standards()
+    {
+        return $this->hasMany(StandardTemplate::class)->orderBy('sort_order');
+    }
 }

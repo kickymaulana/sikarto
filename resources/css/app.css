@@ -76,3 +76,15 @@ body {
     margin: 4px 0 0;
     color: #1e293b;
 }
+
+.field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.field-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+}

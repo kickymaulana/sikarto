@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class StandardTemplate extends Model
 {
-    protected $fillable = ['instrument_type_id', 'standard_value', 'sort_order'];
+    protected $fillable = ['capacity_id', 'standard_value', 'sort_order'];
 
-    public function type()
+    public function capacity()
     {
-        return $this->belongsTo(InstrumentType::class, 'instrument_type_id');
+        return $this->belongsTo(Capacity::class);
     }
 }

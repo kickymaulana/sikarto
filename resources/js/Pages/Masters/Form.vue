@@ -22,14 +22,30 @@ props.config.fields.forEach((f) => {
     form[f.key] = props.item ? props.item[f.key] : f.type === 'select' ? '' : '';
 });
 
+const isCapacity = props.entity === 'capacities';
+const standards = ref<string[]>(
+    props.item?.standards?.length
+        ? props.item.standards.map((s: any) => String(s.standard_value ?? s))
+        : ['']
+);
+
 const isEditing = !!props.item;
 const saving = ref(false);
 
 const fieldOptions = (key: string) =>
     (props.options[key] ?? []).map((o) => ({ label: o.name ?? o.code, value: o.id }));
 
+const addStandard = () => { standards.value.push(''); };
+const removeStandard = (idx: number) => { standards.value.splice(idx, 1); };
+
 const submit = () => {
     saving.value = true;
+    const payload: Record<string, any> = { ...form };
+    if (isCapacity) {
+        payload.standards = standards.value
+            .map((s) => s.trim())
+            .filter((s) => s !== '');
+    }
     const opts = {
         onSuccess: () => { saving.value = false; },
         onError: () => {
@@ -38,9 +54,9 @@ const submit = () => {
         },
     };
     if (isEditing) {
-        router.put(route('masters.update', { entity: props.entity, id: props.item!.id }), form, opts);
+        router.put(route('masters.update', { entity: props.entity, id: props.item!.id }), payload, opts);
     } else {
-        router.post(route('masters.store', { entity: props.entity }), form, opts);
+        router.post(route('masters.store', { entity: props.entity }), payload, opts);
     }
 };
 
@@ -80,6 +96,23 @@ const remove = () => {
                 </div>
             </template>
         </var-space>
+
+        <div v-if="isCapacity" class="field-block standards-block">
+            <label class="field-label">Titik Uji (Standar)</label>
+            <div v-for="(s, idx) in standards" :key="idx" class="standard-row">
+                <var-input
+                    v-model="standards[idx]"
+                    placeholder="contoh: 500"
+                    type="number"
+                    step="0.0001"
+                />
+                <var-button size="small" text round type="danger" @click="removeStandard(idx)">
+                    <var-icon name="close-circle-outline" :size="20" />
+                </var-button>
+            </div>
+            <var-button size="small" text @click="addStandard">+ Tambah Titik</var-button>
+        </div>
+
         <div class="form-actions">
             <var-button v-if="isEditing" type="danger" block @click="remove" class="delete-btn">
                 Hapus {{ config.label }}
@@ -101,5 +134,21 @@ const remove = () => {
 
 .delete-btn {
     border-radius: 100px;
+}
+
+.standards-block {
+    margin-top: 16px;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 14px;
+}
+
+.standard-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.standard-row .var-input {
+    flex: 1;
 }
 </style>

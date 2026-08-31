@@ -143,7 +143,13 @@ class MasterController extends Controller
         abort_unless(isset($this->entities[$entity]), 404);
 
         $config = $this->entities[$entity];
-        $item = $config['model']::findOrFail($id);
+        $item = $config['model']::query();
+
+        if ($entity === 'capacities') {
+            $item->with('standards');
+        }
+
+        $item = $item->findOrFail($id);
 
         return Inertia::render('Masters/Form', [
             'entity' => $entity,
@@ -160,7 +166,11 @@ class MasterController extends Controller
         $config = $this->entities[$entity];
         $data = $request->validate($config['rules']);
 
-        $config['model']::create($data);
+        $record = $config['model']::create($data);
+
+        if ($entity === 'capacities') {
+            $this->syncStandards($record, $request->input('standards'));
+        }
 
         return redirect()->route('masters.index', $entity)
             ->with('flash', ['success' => "{$config['label']} berhasil ditambahkan."]);
@@ -173,7 +183,12 @@ class MasterController extends Controller
         $config = $this->entities[$entity];
         $data = $request->validate($config['rules']);
 
-        $config['model']::findOrFail($id)->update($data);
+        $record = $config['model']::findOrFail($id);
+        $record->update($data);
+
+        if ($entity === 'capacities') {
+            $this->syncStandards($record, $request->input('standards'));
+        }
 
         return redirect()->route('masters.index', $entity)
             ->with('flash', ['success' => "{$config['label']} berhasil diperbarui."]);
@@ -188,6 +203,22 @@ class MasterController extends Controller
 
         return redirect()->route('masters.index', $entity)
             ->with('flash', ['success' => "{$config['label']} berhasil dihapus."]);
+    }
+
+    private function syncStandards($capacity, $standards): void
+    {
+        $capacity->standards()->delete();
+
+        $values = collect($standards ?? [])
+            ->filter(fn ($v) => $v !== null && $v !== '')
+            ->values();
+
+        foreach ($values as $i => $value) {
+            $capacity->standards()->create([
+                'standard_value' => $value,
+                'sort_order' => $i,
+            ]);
+        }
     }
 
     private function options(string $entity): array

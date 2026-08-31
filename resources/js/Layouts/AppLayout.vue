@@ -10,6 +10,19 @@ const auth = computed(() => page.props.auth);
 const can = (permission: string) =>
     !!auth.value?.user && auth.value.user.permissions.includes(permission);
 
+// Reaktif ke navigasi Inertia (route().current() tidak reaktif — ini wajib)
+const currentRoute = ref('');
+const currentParams = ref<Record<string, any>>({});
+
+watch(
+    () => page.url,
+    () => {
+        currentRoute.value = route().current() ?? '';
+        currentParams.value = { ...(route().params ?? {}) };
+    },
+    { immediate: true }
+);
+
 const entityLabels: Record<string, string> = {
     factories: 'Factory',
     departments: 'Departemen',
@@ -20,12 +33,12 @@ const entityLabels: Record<string, string> = {
 };
 
 const pageTitle = computed(() => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     if (current === 'dashboard') return auth.value?.user?.name ?? 'SI KARTO';
     if (current === 'masters.menu') return 'Master Data';
-    if (current === 'masters.index') return entityLabels[route().params.entity] ?? 'Master';
-    if (current === 'masters.create') return `Tambah ${entityLabels[route().params.entity] ?? ''}`;
-    if (current === 'masters.edit') return `Edit ${entityLabels[route().params.entity] ?? ''}`;
+    if (current === 'masters.index') return entityLabels[currentParams.value.entity] ?? 'Master';
+    if (current === 'masters.create') return `Tambah ${entityLabels[currentParams.value.entity] ?? ''}`;
+    if (current === 'masters.edit') return `Edit ${entityLabels[currentParams.value.entity] ?? ''}`;
     if (current === 'instruments.index') return 'Alat Ukur';
     if (current === 'instruments.create') return 'Tambah Alat Ukur';
     if (current === 'instruments.edit') return 'Edit Alat Ukur';
@@ -38,12 +51,12 @@ const pageTitle = computed(() => {
 });
 
 const isSearchable = computed(() => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     return current === 'masters.index' || current === 'instruments.index' || current === 'tests.index';
 });
 
 const showAdd = computed(() => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     return current === 'masters.index' || current === 'instruments.index' || current === 'tests.index';
 });
 
@@ -57,9 +70,9 @@ const exitSearch = () => {
 };
 
 const goCreate = () => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     if (current === 'masters.index') {
-        router.get(route('masters.create', { entity: route().params.entity }));
+        router.get(route('masters.create', { entity: currentParams.value.entity }));
     } else if (current === 'instruments.index') {
         router.get(route('instruments.create'));
     } else if (current === 'tests.index') {
@@ -82,7 +95,7 @@ const navItems = computed(() => {
 const activeIndex = ref(0);
 
 const syncActive = () => {
-    const current = route().current();
+    const current = currentRoute.value;
     const idx = navItems.value.findIndex((i) => {
         if (i.name === 'dashboard') return current === 'dashboard';
         return (current ?? '').startsWith(i.name.split('.')[0]);
@@ -102,7 +115,7 @@ const onTabChange = (active: string | number) => {
         'reports.index': 'reports.index',
     };
     const target = targets[item.name];
-    if (target && route().current() !== target) {
+    if (target && currentRoute.value !== target) {
         router.get(route(target));
     }
 };
@@ -112,29 +125,29 @@ const onFabClick = () => {
 };
 
 const isTestPage = computed(() => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     return current.startsWith('tests.');
 });
 
 const showBack = computed(() => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     return current !== 'dashboard';
 });
 
 const isDashboard = computed(() => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     return current === 'dashboard';
 });
 
 const goBack = () => {
-    const current = route().current() ?? '';
+    const current = currentRoute.value;
     if (current.startsWith('tests.')) {
         router.get(route('tests.index'));
     } else if (current.startsWith('masters.')) {
         if (current === 'masters.index') {
             router.get(route('masters.menu'));
         } else {
-            router.get(route('masters.index', { entity: route().params.entity }));
+            router.get(route('masters.index', { entity: currentParams.value.entity }));
         }
     } else if (current.startsWith('instruments.')) {
         router.get(route('instruments.index'));

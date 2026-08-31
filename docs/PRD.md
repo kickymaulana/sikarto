@@ -104,8 +104,8 @@ instruments (id, code [unique], factory_id, department_id, instrument_type_id,
             brand_id, capacity_id, acceptable_limit_id, is_active, notes)
   └─ contoh code: W.FL.5
 
-standard_templates (id, instrument_type_id, standard_value, sort_order)
-  └─ titik pengujian standar per jenis alat (500 gr, 700 gr, 800 gr)
+standard_templates (id, capacity_id, standard_value, sort_order)
+  └─ titik pengujian standar PER KAPASITAS (3 KG → 500, 700, 800, 1000)
 
 calibration_tests (id, instrument_id, test_date, next_test_date,
                    tester_id → users, status [PASS|FAIL], notes)
@@ -117,7 +117,7 @@ calibration_test_items (id, calibration_test_id, standard_value,
 ### 3.2 Aturan Data
 - `instruments.code` UNIQUE — kode alat (contoh `W.FL.5`), validasi duplikat.
 - `acceptable_limits` pakai `min_correction`/`max_correction` numerik + `unit` (bukan string "±5 gr" mentah) agar validasi PASS/FAIL bisa dihitung mesin.
-- `standard_templates` per jenis alat — template titik uji (bisa diubah per jenis, tidak per alat).
+- `standard_templates` per **kapasitas** — titik uji diatur di form Kapasitas (tambah/hapus standar), bukan per jenis alat.
 - Unit konsisten dalam satu alat: kapasitas & toleransi memakai unit sama (gr untuk berat, mm untuk panjang).
 - Semua tabel master + `instruments` soft delete.
 - `calibration_tests` & items immutable setelah disimpan (revisi hanya oleh pemegang hak + tercatat audit).
@@ -147,7 +147,7 @@ calibration_test_items (id, calibration_test_id, standard_value,
 
 ### FR-2 Form Entry Pengujian (mobile/web friendly)
 - **FR-2.1** Input/pilih `Kode Alat` → sistem auto-fill: Factory, Departemen, Jenis, Merk, Kapasitas, Toleransi.
-- **FR-2.2** Tabel titik uji otomatis dari `standard_templates` jenis alat (contoh: 500 gr, 700 gr, 800 gr).
+- **FR-2.2** Tabel titik uji otomatis dari `standard_templates` **kapasitas** alat (contoh: 3 KG → 500 gr, 700 gr, 800 gr). Jumlah titik bervariasi per kapasitas (bisa 3, 5, dst.).
 - **FR-2.3** QC input kolom **Penunjukan** per baris.
 - **FR-2.4** Perhitungan real-time: `Correction = Penunjukan − Standar`, kolom status tiap baris (OK/NOK), total status alat (PASS/FAIL).
 - **FR-2.5** Save → simpan test + items → `next_test_date = test_date + 1 bulan` (auto).

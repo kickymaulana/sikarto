@@ -15,10 +15,12 @@ const props = defineProps<{
         department: { name: string };
         type: {
             name: string;
-            standards: Array<{ standard_value: number }>;
         };
         brand: { name: string };
-        capacity: { name: string };
+        capacity: {
+            name: string;
+            standards: Array<{ standard_value: number }>;
+        };
         acceptable_limit: { name: string; min_correction: number; max_correction: number; unit: string };
     }>;
 }>();
@@ -38,7 +40,7 @@ const selectInstrument = (id: number) => {
     const instrument = props.instruments.find((i) => i.id === id);
     selected.value = instrument;
     form.instrument_id = String(id);
-    items.value = (instrument?.type.standards ?? []).map((s) => ({
+    items.value = (instrument?.capacity.standards ?? []).map((s) => ({
         standard_value: s.standard_value,
         reading_value: '',
         correction: 0,
