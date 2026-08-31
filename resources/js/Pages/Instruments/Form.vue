@@ -16,6 +16,7 @@ const props = defineProps<{
         brands: Array<{ id: number; name: string }>;
         capacities: Array<{ id: number; name: string }>;
         limits: Array<{ id: number; name: string }>;
+        specifications: Array<{ id: number; name: string }>;
     };
 }>();
 
@@ -29,6 +30,7 @@ const form = reactive<any>({
     brand_id: props.instrument?.brand_id ?? '',
     capacity_id: props.instrument?.capacity_id ?? '',
     acceptable_limit_id: props.instrument?.acceptable_limit_id ?? '',
+    specification_id: props.instrument?.specification_id ?? '',
     notes: props.instrument?.notes ?? '',
 });
 
@@ -78,12 +80,34 @@ const remove = () => {
                 <label class="field-label">Kode Alat *</label>
                 <var-input v-model="form.code" placeholder="cth: W.FL.5" />
             </div>
-            <var-select v-model="form.factory_id" label="Factory *" :options="toOpts(options.factories)" @change="form.department_id = ''" />
-            <var-select v-model="form.department_id" label="Departemen *" :options="toOpts(filteredDepartments)" />
-            <var-select v-model="form.instrument_type_id" label="Jenis Alat *" :options="toOpts(options.types)" />
-            <var-select v-model="form.brand_id" label="Merk *" :options="toOpts(options.brands)" />
-            <var-select v-model="form.capacity_id" label="Kapasitas *" :options="toOpts(options.capacities)" />
-            <var-select v-model="form.acceptable_limit_id" label="Toleransi *" :options="toOpts(options.limits)" />
+            <div class="field-block">
+                <label class="field-label">Factory *</label>
+                <var-select v-model="form.factory_id" placeholder="Pilih Factory" :options="toOpts(options.factories)" @change="form.department_id = ''" />
+            </div>
+            <div class="field-block">
+                <label class="field-label">Departemen *</label>
+                <var-select v-model="form.department_id" placeholder="Pilih Departemen" :options="toOpts(filteredDepartments)" />
+            </div>
+            <div class="field-block">
+                <label class="field-label">Jenis Alat *</label>
+                <var-select v-model="form.instrument_type_id" placeholder="Pilih Jenis Alat" :options="toOpts(options.types)" />
+            </div>
+            <div class="field-block">
+                <label class="field-label">Merk *</label>
+                <var-select v-model="form.brand_id" placeholder="Pilih Merk" :options="toOpts(options.brands)" />
+            </div>
+            <div class="field-block">
+                <label class="field-label">Kapasitas *</label>
+                <var-select v-model="form.capacity_id" placeholder="Pilih Kapasitas" :options="toOpts(options.capacities)" />
+            </div>
+            <div class="field-block">
+                <label class="field-label">Toleransi *</label>
+                <var-select v-model="form.acceptable_limit_id" placeholder="Pilih Toleransi" :options="toOpts(options.limits)" />
+            </div>
+            <div class="field-block">
+                <label class="field-label">Spesifikasi (opsional)</label>
+                <var-select v-model="form.specification_id" placeholder="Pilih Spesifikasi" :options="toOpts(options.specifications)" />
+            </div>
             <div class="field-block">
                 <label class="field-label">Catatan (opsional)</label>
                 <var-input v-model="form.notes" :textarea="true" />

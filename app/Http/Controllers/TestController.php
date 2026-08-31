@@ -32,7 +32,7 @@ class TestController extends Controller
     public function create()
     {
         return Inertia::render('Tests/Create', [
-            'instruments' => Instrument::with(['capacity.standards', 'factory', 'department', 'type', 'brand', 'acceptableLimit'])
+            'instruments' => Instrument::with(['capacity.standards', 'factory', 'department', 'type', 'brand', 'acceptableLimit', 'specification'])
                 ->orderBy('code')
                 ->get(),
         ]);
@@ -92,7 +92,7 @@ class TestController extends Controller
     public function show(CalibrationTest $test)
     {
         $test->load(['instrument', 'instrument.type', 'instrument.factory', 'instrument.department',
-            'instrument.brand', 'instrument.capacity', 'instrument.acceptableLimit', 'tester', 'items']);
+            'instrument.brand', 'instrument.capacity', 'instrument.acceptableLimit', 'instrument.specification', 'tester', 'items']);
 
         return Inertia::render('Tests/Show', ['test' => $test]);
     }

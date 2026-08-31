@@ -79,12 +79,14 @@ const remove = () => {
     <div class="white-card">
         <var-space direction="column" size="small">
             <template v-for="f in config.fields" :key="f.key">
-                <var-select
-                    v-if="f.type === 'select'"
-                    v-model="form[f.key]"
-                    :label="f.label"
-                    :options="fieldOptions(f.options ?? '')"
-                />
+                <div v-if="f.type === 'select'" class="field-block">
+                    <label class="field-label">{{ f.label }}</label>
+                    <var-select
+                        v-model="form[f.key]"
+                        :placeholder="f.label"
+                        :options="fieldOptions(f.options ?? '')"
+                    />
+                </div>
                 <div v-else class="field-block">
                     <label class="field-label">{{ f.label }}</label>
                     <var-input

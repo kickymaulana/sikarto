@@ -16,6 +16,7 @@ const masters = [
     { key: 'brands', label: 'Merk', icon: '🏷️', color: '#f0fdf4', border: '#bbf7d0', text: '#15803d' },
     { key: 'capacities', label: 'Kapasitas', icon: '📏', color: '#f0f9ff', border: '#bae6fd', text: '#0369a1' },
     { key: 'limits', label: 'Acceptable Limit', icon: '🎯', color: '#fef3c7', border: '#fde68a', text: '#b45309' },
+    { key: 'specifications', label: 'Spesifikasi', icon: '📄', color: '#f5f3ff', border: '#ddd6fe', text: '#6d28d9' },
     { key: 'instruments', label: 'Alat Ukur', icon: '🔧', color: '#fdf0ea', border: '#fed7aa', text: '#ea580c' },
 ];
 

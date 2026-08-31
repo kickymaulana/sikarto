@@ -97,11 +97,15 @@ brands (id, name)
 capacities (id, name, value, unit)
   └─ contoh: 3 KG, 500 KG, 150 MM
 
+specifications (id, name)
+  └─ contoh: Kapasitas 3 kg, Ketelitian 0.1, Bahan stainless
+
 acceptable_limits (id, name, min_correction, max_correction, unit)
   └─ contoh: ±5 gr → min=-5, max=5, unit=gr; ±2 kg → min=-2000, max=2000, unit=gr
 
 instruments (id, code [unique], factory_id, department_id, instrument_type_id,
-            brand_id, capacity_id, acceptable_limit_id, is_active, notes)
+            brand_id, capacity_id, acceptable_limit_id, specification_id* [opsional],
+            is_active, notes)
   └─ contoh code: W.FL.5
 
 standard_templates (id, capacity_id, standard_value, sort_order)
@@ -130,6 +134,7 @@ calibration_test_items (id, calibration_test_id, standard_value,
 | Jenis Alat | ✅ | ✅ | ✅ | ✅ (jika tak dipakai alat) |
 | Merk | ✅ | ✅ | ✅ | ✅ |
 | Kapasitas | ✅ | ✅ | ✅ | ✅ |
+| Spesifikasi | ✅ | ✅ | ✅ | ✅ |
 | Acceptable Limit | ✅ | ✅ | ✅ | ✅ |
 | Alat Ukur | ✅ | ✅ | ✅ | Soft delete |
 
@@ -161,9 +166,9 @@ calibration_test_items (id, calibration_test_id, standard_value,
 4. Simpan → status alat ditentukan → jadwal bulan depan dibuat.
 
 ### FR-3 Master Data
-- **FR-3.1** CRUD terpisah per master (Factory, Departemen, Jenis Alat, Merk, Kapasitas, Acceptable Limit, Alat Ukur).
+- **FR-3.1** CRUD terpisah per master (Factory, Departemen, Jenis Alat, Merk, Kapasitas, Spesifikasi, Acceptable Limit, Alat Ukur).
 - **FR-3.2** Setiap form master memakai dropdown referensi master lain (konsistensi input).
-- **FR-3.3** Form alat ukur: pilih Factory → pilih Departemen (difilter per factory) → Jenis → Merk → Kapasitas → Toleransi → isi Kode Alat unik.
+- **FR-3.3** Form alat ukur: pilih Factory → pilih Departemen (difilter per factory) → Jenis → Merk → Kapasitas → Toleransi → Spesifikasi (opsional) → isi Kode Alat unik.
 - **FR-3.4** Form Acceptable Limit: input nama (contoh: "±5 gr"), nilai min, nilai max, unit.
 - **FR-3.5** Pencarian, paginasi, sorting di semua list.
 
@@ -258,6 +263,7 @@ Referensi desain: aplikasi **SUKIRMAN** (`D:\Apache24\htdocs\sukirman`). Adopsi 
 - `var-form` pakai prop `:onsubmit="fn"` (handler terima `valid: boolean`, guard `if (!valid) return`). JANGAN `@submit.prevent` → crash `e.preventDefault is not a function`.
 - `InputType` HANYA `text|password|number|tel|email`. Textarea = `:textarea="true"`. Tanggal = native `<input type="date">`.
 - `var-avatar`: tidak ada `text-color`. `var-input`: tidak ada `focus`, pakai `autofocus`.
+- **`var-input` & `var-select` TIDAK punya prop `label`** — label wajib manual via `<label class="field-label">` di dalam `field-block` (lihat `Masters/Form.vue`, `Instruments/Form.vue`).
 - **Icon font kustom** (bukan MDI): daftar ikon di `node_modules/@varlet/ui/es/icon/icon.css`. `logout`, `pencil`, `gauge`, `close` dll TIDAK ADA — aksi pakai tombol teks.
 - **Konfirmasi wajib pakai `Dialog` bawaan Varlet** (import `{ Dialog } from '@varlet/ui'`) — JANGAN `confirm()`. Tombol dialog bahasa Indonesia: `confirmButtonText: 'Ya, Hapus'`, `cancelButtonText: 'Batal'`. Contoh: `Masters/Form.vue`, `Instruments/Form.vue`.
 - Cek komponen lain via `node_modules/@varlet/ui/types/<component>.d.ts` (registry MCP parsial, tidak mencakup semua komponen).

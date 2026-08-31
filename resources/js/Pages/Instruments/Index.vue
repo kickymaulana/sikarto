@@ -26,7 +26,7 @@ const filteredList = computed(() => {
     const q = searchState.value.toLowerCase();
     return listData.value.filter((i) =>
         i.code?.toLowerCase().includes(q) || i.type?.name?.toLowerCase().includes(q) ||
-        i.brand?.name?.toLowerCase().includes(q)
+        i.brand?.name?.toLowerCase().includes(q) || i.specification?.name?.toLowerCase().includes(q)
     );
 });
 
@@ -89,6 +89,7 @@ const refresh = () => {
                         <span class="name">{{ i.code }}</span>
                         <span class="meta">
                             {{ i.type?.name }} • {{ i.brand?.name }} • {{ i.capacity?.name }}
+                            {{ i.specification?.name ? '• '+i.specification.name : '' }}
                             {{ i.is_active ? '' : '• NONAKTIF' }}
                         </span>
                     </div>

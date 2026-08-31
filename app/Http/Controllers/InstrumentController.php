@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\Factory;
 use App\Models\Instrument;
 use App\Models\InstrumentType;
+use App\Models\Specification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -16,7 +17,7 @@ class InstrumentController extends Controller
 {
     public function index()
     {
-        $instruments = Instrument::with(['factory', 'department', 'type', 'brand', 'capacity', 'acceptableLimit', 'latestTest'])
+        $instruments = Instrument::with(['factory', 'department', 'type', 'brand', 'capacity', 'acceptableLimit', 'specification', 'latestTest'])
             ->orderBy('code')
             ->paginate(20)
             ->withQueryString();
@@ -52,6 +53,7 @@ class InstrumentController extends Controller
             'brand_id' => 'required|exists:brands,id',
             'capacity_id' => 'required|exists:capacities,id',
             'acceptable_limit_id' => 'required|exists:acceptable_limits,id',
+            'specification_id' => 'nullable|exists:specifications,id',
             'notes' => 'nullable|string',
         ]);
 
@@ -71,6 +73,7 @@ class InstrumentController extends Controller
             'brand_id' => 'required|exists:brands,id',
             'capacity_id' => 'required|exists:capacities,id',
             'acceptable_limit_id' => 'required|exists:acceptable_limits,id',
+            'specification_id' => 'nullable|exists:specifications,id',
             'is_active' => 'boolean',
             'notes' => 'nullable|string',
         ]);
@@ -98,6 +101,7 @@ class InstrumentController extends Controller
             'brands' => Brand::orderBy('name')->get(),
             'capacities' => Capacity::orderBy('name')->get(),
             'limits' => AcceptableLimit::orderBy('name')->get(),
+            'specifications' => Specification::orderBy('name')->get(),
         ];
     }
 }

@@ -11,6 +11,7 @@ use App\Models\Department;
 use App\Models\Factory;
 use App\Models\Instrument;
 use App\Models\InstrumentType;
+use App\Models\Specification;
 use App\Models\StandardTemplate;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -43,6 +44,10 @@ class DatabaseSeeder extends Seeder
 
         foreach (['DICSON', 'Mitutoyo', 'Krisbow'] as $name) {
             Brand::create(['name' => $name]);
+        }
+
+        foreach (['Kapasitas 3 kg', 'Ketelitian 0.1', 'Bahan stainless', 'Tipe analog'] as $name) {
+            Specification::create(['name' => $name]);
         }
 
         $capacityData = [
@@ -98,6 +103,7 @@ class DatabaseSeeder extends Seeder
             'brand_id' => Brand::first()->id,
             'capacity_id' => Capacity::first()->id,
             'acceptable_limit_id' => AcceptableLimit::first()->id,
+            'specification_id' => Specification::first()?->id,
             'notes' => 'Timbangan contoh',
         ]);
 

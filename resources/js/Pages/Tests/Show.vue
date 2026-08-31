@@ -20,6 +20,7 @@ const props = defineProps<{
                 <div class="info-row"><span class="info-label">Jenis</span><span>{{ test.instrument.type?.name }}</span></div>
                 <div class="info-row"><span class="info-label">Lokasi</span><span>{{ test.instrument.factory?.name }} / {{ test.instrument.department?.name }}</span></div>
                 <div class="info-row"><span class="info-label">Merk / Kapasitas</span><span>{{ test.instrument.brand?.name }} / {{ test.instrument.capacity?.name }}</span></div>
+                <div class="info-row"><span class="info-label">Spesifikasi</span><span>{{ test.instrument.specification?.name ?? '—' }}</span></div>
                 <div class="info-row"><span class="info-label">Toleransi</span><span>{{ test.instrument.acceptable_limit?.name }}</span></div>
             </div>
 

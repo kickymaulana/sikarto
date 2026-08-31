@@ -30,6 +30,7 @@ const entityLabels: Record<string, string> = {
     brands: 'Merk',
     capacities: 'Kapasitas',
     limits: 'Acceptable Limit',
+    specifications: 'Spesifikasi',
 };
 
 const pageTitle = computed(() => {
@@ -140,6 +141,12 @@ const isDashboard = computed(() => {
 });
 
 const goBack = () => {
+    // Prioritas: kembali ke halaman sebelumnya (histori browser)
+    if (window.history.length > 1) {
+        window.history.back();
+        return;
+    }
+    // Fallback: deep-link/reload tanpa histori
     const current = currentRoute.value;
     if (current.startsWith('tests.')) {
         router.get(route('tests.index'));

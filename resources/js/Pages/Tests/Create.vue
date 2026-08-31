@@ -21,6 +21,7 @@ const props = defineProps<{
             name: string;
             standards: Array<{ standard_value: number }>;
         };
+        specification: { name: string } | null;
         acceptable_limit: { name: string; min_correction: number; max_correction: number; unit: string };
     }>;
 }>();
@@ -109,6 +110,7 @@ const submit = () => {
                 <div class="info-row"><span class="info-label">Merk</span><span>{{ selected.brand.name }}</span></div>
                 <div class="info-row"><span class="info-label">Kapasitas</span><span>{{ selected.capacity.name }}</span></div>
                 <div class="info-row"><span class="info-label">Toleransi</span><span>{{ selected.acceptable_limit.name }}</span></div>
+                <div class="info-row"><span class="info-label">Spesifikasi</span><span>{{ selected.specification?.name ?? '—' }}</span></div>
             </div>
 
             <div v-if="selected" class="white-card">

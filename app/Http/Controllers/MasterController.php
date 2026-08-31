@@ -9,6 +9,7 @@ use App\Models\Department;
 use App\Models\Factory;
 use App\Models\Instrument;
 use App\Models\InstrumentType;
+use App\Models\Specification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -86,6 +87,13 @@ class MasterController extends Controller
                 'unit' => 'required|string|max:20',
             ],
         ],
+        'specifications' => [
+            'model' => Specification::class,
+            'label' => 'Spesifikasi',
+            'columns' => [['key' => 'name', 'label' => 'Nama']],
+            'fields' => [['key' => 'name', 'label' => 'Nama', 'type' => 'text']],
+            'rules' => ['name' => 'required|string|max:255'],
+        ],
     ];
 
     public function menu()
@@ -98,6 +106,7 @@ class MasterController extends Controller
                 'brands' => Brand::count(),
                 'capacities' => Capacity::count(),
                 'limits' => AcceptableLimit::count(),
+                'specifications' => Specification::count(),
                 'instruments' => Instrument::count(),
             ],
         ]);

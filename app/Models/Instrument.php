@@ -11,7 +11,7 @@ class Instrument extends Model
 
     protected $fillable = [
         'code', 'factory_id', 'department_id', 'instrument_type_id',
-        'brand_id', 'capacity_id', 'acceptable_limit_id', 'is_active', 'notes',
+        'brand_id', 'capacity_id', 'acceptable_limit_id', 'specification_id', 'is_active', 'notes',
     ];
 
     protected $casts = [
@@ -46,6 +46,11 @@ class Instrument extends Model
     public function acceptableLimit()
     {
         return $this->belongsTo(AcceptableLimit::class);
+    }
+
+    public function specification()
+    {
+        return $this->belongsTo(Specification::class);
     }
 
     public function tests()
