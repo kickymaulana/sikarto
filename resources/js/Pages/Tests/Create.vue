@@ -64,11 +64,6 @@ const computeRow = (idx: number) => {
 
 const overallStatus = computed(() => {
     if (items.value.length === 0) return 'PASS';
-    const allWithin = items.value.every((i) => {
-        const reading = parseFloat(i.reading_value);
-        return !isNaN(reading) && i.within;
-    });
-    if (!allWithin) return 'FAIL';
     const avg = avgCorrection.value;
     if (avg === null) return 'PASS';
     const limit = selected.value?.acceptable_limit;
@@ -168,7 +163,7 @@ const submit = () => {
                 </var-alert>
                 <var-alert :type="overallStatus === 'PASS' ? 'success' : 'danger'">
                     Status Alat: {{ overallStatus }}
-                    <template v-if="overallStatus === 'FAIL'"> — ada titik/rata-rata melewati toleransi. Pengujian tetap tersimpan.</template>
+                    <template v-if="overallStatus === 'FAIL'"> — rata-rata koreksi melewati toleransi. Pengujian tetap tersimpan.</template>
                 </var-alert>
 
                 <var-button type="primary" block class="submit-btn" :loading="saving" :disabled="!allFilled" @click="submit">

@@ -29,6 +29,21 @@ const props = defineProps<{
                 <div class="info-row"><span class="info-label">Tanggal Uji</span><span>{{ test.test_date }}</span></div>
                 <div class="info-row"><span class="info-label">Next Test</span><span>{{ test.next_test_date }}</span></div>
                 <div class="info-row"><span class="info-label">Tester</span><span>{{ test.tester?.name }}</span></div>
+                <div class="info-row"><span class="info-label">Rata-rata Koreksi</span>
+                    <span>
+                        {{ test.avg_correction ?? '—' }}
+                        <var-chip
+                            v-if="test.avg_correction !== null"
+                            :type="(test.avg_correction >= test.instrument.acceptable_limit.min_correction &&
+                                    test.avg_correction <= test.instrument.acceptable_limit.max_correction)
+                                   ? 'success' : 'danger'"
+                            size="mini"
+                        >
+                            {{ (test.avg_correction >= test.instrument.acceptable_limit.min_correction &&
+                                test.avg_correction <= test.instrument.acceptable_limit.max_correction) ? 'OK' : 'NOK' }}
+                        </var-chip>
+                    </span>
+                </div>
                 <div class="info-row"><span class="info-label">Catatan</span><span>{{ test.notes ?? '—' }}</span></div>
             </div>
 

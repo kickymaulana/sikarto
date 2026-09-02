@@ -49,18 +49,14 @@ class TestController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-$instrument = Instrument::with('acceptableLimit')->findOrFail($data['instrument_id']);
+        $instrument = Instrument::with('acceptableLimit')->findOrFail($data['instrument_id']);
         $limit = $instrument->acceptableLimit;
 
-        $isFail = false;
         $corrections = [];
         $testItems = [];
         foreach ($data['items'] as $item) {
             $correction = (float) $item['reading_value'] - (float) $item['standard_value'];
             $within = $limit->isWithin($correction);
-            if (! $within) {
-                $isFail = true;
-            }
             $corrections[] = $correction;
             $testItems[] = [
                 'standard_value' => $item['standard_value'],
@@ -71,11 +67,9 @@ $instrument = Instrument::with('acceptableLimit')->findOrFail($data['instrument_
         }
 
         $avgCorrection = round(array_sum($corrections) / count($corrections), 4);
-        if (! $limit->isWithin($avgCorrection)) {
-            $isFail = true;
-        }
+        $isFail = ! $limit->isWithin($avgCorrection);
 
-        $testDate = \Carbon\Carbon::parse($data['test_date']);
+        $testDate = Carbon::parse($data['test_date']);
         $test = CalibrationTest::create([
             'instrument_id' => $instrument->id,
             'test_date' => $testDate->toDateString(),

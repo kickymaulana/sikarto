@@ -76,9 +76,10 @@ class CalibrationTestTest extends TestCase
         $this->assertEquals('2026-09-01', $test->next_test_date->toDateString());
         $this->assertEquals(2, $test->items()->count());
         $this->assertTrue($test->items()->first()->is_within_limit);
+        $this->assertNotNull($test->avg_correction);
     }
 
-    public function test_fail_when_one_correction_exceeds_limit_but_test_is_saved(): void
+    public function test_fail_when_avg_exceeds_limit(): void
     {
         $instrument = $this->makeInstrument();
 
@@ -97,6 +98,33 @@ class CalibrationTestTest extends TestCase
         $this->assertEquals('2026-09-10', $test->next_test_date->toDateString());
         $this->assertTrue($test->items()->get()[0]->is_within_limit);
         $this->assertFalse($test->items()->get()[1]->is_within_limit);
+        $this->assertEquals(11.0, $test->avg_correction);
+    }
+
+    public function test_pass_even_with_one_point_outside_when_avg_within(): void
+    {
+        $instrument = $this->makeInstrument();
+
+        $response = $this->actingAs($this->inspector())->post('/tests', [
+            'instrument_id' => $instrument->id,
+            'test_date' => '2026-08-15',
+            'items' => [
+                ['standard_value' => 500, 'reading_value' => 505],
+                ['standard_value' => 700, 'reading_value' => 702],
+                ['standard_value' => 800, 'reading_value' => 799],
+                ['standard_value' => 1000, 'reading_value' => 998],
+                ['standard_value' => 1200, 'reading_value' => 1196],
+                ['standard_value' => 1300, 'reading_value' => 1295],
+                ['standard_value' => 1500, 'reading_value' => 1494],
+            ],
+        ]);
+
+        $test = CalibrationTest::first();
+        $this->assertNotNull($test);
+        $this->assertEquals('PASS', $test->status);
+        // titik 1494 → -6 → NOK per titik, tapi rata-rata ~ -1.57 → OK → PASS
+        $this->assertFalse($test->items()->get()[6]->is_within_limit);
+        $this->assertEquals(-1.5714, $test->avg_correction);
     }
 
     public function test_permission_middleware_blocks_inspector_from_report_export(): void
