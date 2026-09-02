@@ -9,8 +9,22 @@ import '@varlet/ui/es/style';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h, type DefineComponent, Transition } from 'vue';
-import Varlet, { Themes, StyleProvider } from '@varlet/ui';
+import Varlet, { Locale, Themes, StyleProvider } from '@varlet/ui';
 import { ZiggyVue } from 'ziggy-js';
+
+// Bahasa Indonesia untuk komponen Varlet (default = zh-CN)
+Locale.add('id-ID', {
+    ...Locale.enUS,
+    dialogTitle: 'Konfirmasi',
+    dialogConfirmButtonText: 'Ya',
+    dialogCancelButtonText: 'Batal',
+    listLoadingText: 'Memuat...',
+    listFinishedText: 'Semua data sudah dimuat',
+    listErrorText: 'Gagal memuat',
+    selectEmptyText: 'Tidak ada data',
+    dataTableEmptyText: 'Tidak ada data',
+});
+Locale.use('id-ID');
 
 StyleProvider({
     ...Themes.md3Light,

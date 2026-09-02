@@ -107,11 +107,14 @@ const submit = () => {
             v-model="form.instrument_id"
             placeholder="Kode Alat"
             :options="instrumentOptions"
+            filterable
+            clearable
             @change="selectInstrument"
         />
     </div>
 
             <div v-if="selected" class="info-card">
+                <h3 class="selected-code">🔧 {{ selected.code }}</h3>
                 <div class="info-row"><span class="info-label">Factory</span><span>{{ selected.factory.name }}</span></div>
                 <div class="info-row"><span class="info-label">Departemen</span><span>{{ selected.department.name }}</span></div>
                 <div class="info-row"><span class="info-label">Jenis</span><span>{{ selected.type.name }}</span></div>
@@ -192,6 +195,13 @@ const submit = () => {
     padding: 6px 0;
     font-size: 13px;
     color: #0f172a;
+}
+
+.selected-code {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 800;
+    color: #f57c00;
 }
 
 .info-label {
