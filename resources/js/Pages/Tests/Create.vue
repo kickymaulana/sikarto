@@ -64,10 +64,23 @@ const computeRow = (idx: number) => {
 
 const overallStatus = computed(() => {
     if (items.value.length === 0) return 'PASS';
-    return items.value.every((i) => {
+    const allWithin = items.value.every((i) => {
         const reading = parseFloat(i.reading_value);
         return !isNaN(reading) && i.within;
-    }) ? 'PASS' : 'FAIL';
+    });
+    if (!allWithin) return 'FAIL';
+    const avg = avgCorrection.value;
+    if (avg === null) return 'PASS';
+    const limit = selected.value?.acceptable_limit;
+    if (!limit) return 'PASS';
+    return avg >= limit.min_correction && avg <= limit.max_correction ? 'PASS' : 'FAIL';
+});
+
+const avgCorrection = computed<number | null>(() => {
+    const filled = items.value.filter((i) => !isNaN(parseFloat(i.reading_value)));
+    if (filled.length === 0) return null;
+    const sum = filled.reduce((acc, i) => acc + i.correction, 0);
+    return Math.round((sum / filled.length) * 10000) / 10000;
 });
 
 const allFilled = computed(() =>
@@ -149,9 +162,13 @@ const submit = () => {
                 <var-input v-model="form.notes" placeholder="Catatan (opsional)" :textarea="true" />
 
                 <var-alert v-if="!allFilled" type="warning">Semua penunjukan harus diisi.</var-alert>
+                <var-alert v-if="allFilled && avgCorrection !== null" type="info">
+                    Rata-rata Koreksi: {{ avgCorrection }}
+                    (limit {{ selected.acceptable_limit.min_correction }} s/d {{ selected.acceptable_limit.max_correction }})
+                </var-alert>
                 <var-alert :type="overallStatus === 'PASS' ? 'success' : 'danger'">
                     Status Alat: {{ overallStatus }}
-                    <template v-if="overallStatus === 'FAIL'"> — ada titik melewati toleransi. Pengujian tetap tersimpan.</template>
+                    <template v-if="overallStatus === 'FAIL'"> — ada titik/rata-rata melewati toleransi. Pengujian tetap tersimpan.</template>
                 </var-alert>
 
                 <var-button type="primary" block class="submit-btn" :loading="saving" :disabled="!allFilled" @click="submit">

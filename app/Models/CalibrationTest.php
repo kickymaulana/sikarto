@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class CalibrationTest extends Model
 {
     protected $fillable = [
-        'instrument_id', 'test_date', 'next_test_date', 'tester_id', 'status', 'notes',
+        'instrument_id', 'test_date', 'next_test_date', 'tester_id', 'status', 'avg_correction', 'notes',
     ];
 
     protected function casts(): array
@@ -15,6 +15,7 @@ class CalibrationTest extends Model
         return [
             'test_date' => 'date',
             'next_test_date' => 'date',
+            'avg_correction' => 'float',
         ];
     }
 
