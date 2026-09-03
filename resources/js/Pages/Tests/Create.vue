@@ -26,21 +26,57 @@ const props = defineProps<{
     }>;
 }>();
 
+const manualStatuses = ['SPARE', 'NA', 'SERVICE'];
+
 const selected = ref<any>(null);
 const items = ref<Array<{ standard_value: number; reading_value: string; correction: number; within: boolean }>>([]);
 const form = reactive({
     instrument_id: '',
     test_date: new Date().toISOString().slice(0, 10),
+    status: '',
     notes: '',
 });
 const saving = ref(false);
 
 const instrumentOptions = props.instruments.map((i) => ({ label: i.code, value: i.id }));
 
+const computedStatus = computed(() => {
+    if (items.value.length === 0) return '';
+    const avg = avgCorrection.value;
+    if (avg === null) return '';
+    const limit = selected.value?.acceptable_limit;
+    if (!limit) return '';
+    return avg >= limit.min_correction && avg <= limit.max_correction ? 'OK' : 'NG';
+});
+
+const isManual = computed(() => manualStatuses.includes(form.status));
+
+const finalStatus = computed(() => {
+    if (isManual.value) return form.status;
+    return computedStatus.value || form.status || '';
+});
+
+const statusType = (s: string) => {
+    if (s === 'OK') return 'success';
+    if (s === 'NG') return 'danger';
+    if (s === 'SPARE') return 'info';
+    if (s === 'SERVICE') return 'warning';
+    return 'default';
+};
+
+const alertType = (s: string) => {
+    if (s === 'OK') return 'success';
+    if (s === 'NG') return 'danger';
+    if (s === 'SPARE') return 'info';
+    if (s === 'SERVICE') return 'warning';
+    return 'info';
+};
+
 const selectInstrument = (id: number) => {
     const instrument = props.instruments.find((i) => i.id === id);
     selected.value = instrument;
     form.instrument_id = String(id);
+    form.status = '';
     items.value = (instrument?.capacity.standards ?? []).map((s) => ({
         standard_value: s.standard_value,
         reading_value: '',
@@ -62,15 +98,6 @@ const computeRow = (idx: number) => {
     row.within = !!limit && row.correction >= limit.min_correction && row.correction <= limit.max_correction;
 };
 
-const overallStatus = computed(() => {
-    if (items.value.length === 0) return 'PASS';
-    const avg = avgCorrection.value;
-    if (avg === null) return 'PASS';
-    const limit = selected.value?.acceptable_limit;
-    if (!limit) return 'PASS';
-    return avg >= limit.min_correction && avg <= limit.max_correction ? 'PASS' : 'FAIL';
-});
-
 const avgCorrection = computed<number | null>(() => {
     const filled = items.value.filter((i) => !isNaN(parseFloat(i.reading_value)));
     if (filled.length === 0) return null;
@@ -82,18 +109,28 @@ const allFilled = computed(() =>
     items.value.every((i) => i.reading_value !== '' && !isNaN(parseFloat(i.reading_value)))
 );
 
+const canSubmit = computed(() => {
+    if (!selected.value) return false;
+    if (isManual.value) return true;
+    return allFilled.value;
+});
+
 const submit = () => {
-    if (!selected.value || !allFilled.value) return;
+    if (!selected.value || !canSubmit.value) return;
     saving.value = true;
-    router.post(route('tests.store'), {
+    const payload: Record<string, any> = {
         instrument_id: form.instrument_id,
         test_date: form.test_date,
         notes: form.notes,
-        items: items.value.map((i) => ({
+    };
+    if (form.status) payload.status = form.status;
+    if (!isManual.value && allFilled.value) {
+        payload.items = items.value.map((i) => ({
             standard_value: i.standard_value,
             reading_value: parseFloat(i.reading_value),
-        })),
-    }, {
+        }));
+    }
+    router.post(route('tests.store'), payload, {
         onSuccess: () => { saving.value = false; },
         onError: () => { saving.value = false; Snackbar.error('Gagal menyimpan pengujian.'); },
     });
@@ -101,6 +138,15 @@ const submit = () => {
 </script>
 
 <template>
+    <var-steps
+        :active="selected ? 1 : 0"
+        active-color="#fb8c00"
+        class="steps-bar"
+    >
+        <var-step>Pilih Alat Ukur</var-step>
+        <var-step>Input Penunjukan</var-step>
+    </var-steps>
+
     <div class="white-card">
         <h3 class="card-title">1. Pilih Alat Ukur</h3>
         <var-select
@@ -131,7 +177,16 @@ const submit = () => {
                     <input v-model="form.test_date" type="date" class="date-input" />
                 </div>
 
-                <div class="items-list">
+                <div class="field-block status-block">
+                    <label class="field-label">Status (opsional — otomatis OK/NG dari perhitungan, bisa diganti)</label>
+                    <var-select
+                        v-model="form.status"
+                        placeholder="Otomatis"
+                        :options="['OK', 'NG', 'SPARE', 'NA', 'SERVICE'].map((s) => ({ label: s, value: s }))"
+                    />
+                </div>
+
+                <div v-if="!isManual" class="items-list">
                     <div v-for="(row, idx) in items" :key="idx" class="item-row">
                         <div class="item-left">
                             <span class="item-standar">{{ row.standard_value }}</span>
@@ -159,23 +214,28 @@ const submit = () => {
 
                 <var-input v-model="form.notes" placeholder="Catatan (opsional)" :textarea="true" />
 
-                <var-alert v-if="!allFilled" type="warning">Semua penunjukan harus diisi.</var-alert>
-                <var-alert v-if="allFilled && avgCorrection !== null" type="info">
+                <var-alert v-if="!isManual && !allFilled" type="warning">Semua penunjukan harus diisi (atau pilih status SPARE/NA/SERVICE).</var-alert>
+                <var-alert v-if="!isManual && allFilled && avgCorrection !== null" type="info">
                     Rata-rata Koreksi: {{ avgCorrection }}
                     (limit {{ selected.acceptable_limit.min_correction }} s/d {{ selected.acceptable_limit.max_correction }})
                 </var-alert>
-                <var-alert :type="overallStatus === 'PASS' ? 'success' : 'danger'">
-                    Status Alat: {{ overallStatus }}
-                    <template v-if="overallStatus === 'FAIL'"> — rata-rata koreksi melewati toleransi. Pengujian tetap tersimpan.</template>
+                <var-alert v-if="finalStatus" :type="alertType(finalStatus)">
+                    Status Alat: {{ finalStatus }}
+                    <template v-if="!isManual && finalStatus === 'NG'"> — rata-rata koreksi melewati toleransi. Pengujian tetap tersimpan.</template>
+                    <template v-if="isManual"> — status dipilih manual.</template>
                 </var-alert>
 
-                <var-button type="primary" block class="submit-btn" :loading="saving" :disabled="!allFilled" @click="submit">
+                <var-button type="primary" block class="submit-btn" :loading="saving" :disabled="!canSubmit" @click="submit">
                     Simpan Pengujian
                 </var-button>
             </div>
 </template>
 
 <style scoped>
+.steps-bar {
+    margin-bottom: 12px;
+}
+
 .card-title {
     margin: 0 0 12px;
     font-size: 14px;

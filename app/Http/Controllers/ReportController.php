@@ -31,8 +31,11 @@ class ReportController extends Controller
 
         $summary = [
             'total' => $results->count(),
-            'pass' => $results->where('status', 'PASS')->count(),
-            'fail' => $results->where('status', 'FAIL')->count(),
+            'ok' => $results->where('status', 'OK')->count(),
+            'ng' => $results->where('status', 'NG')->count(),
+            'spare' => $results->where('status', 'SPARE')->count(),
+            'na' => $results->where('status', 'NA')->count(),
+            'service' => $results->where('status', 'SERVICE')->count(),
         ];
 
         return Inertia::render('Reports/Index', [

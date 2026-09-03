@@ -72,7 +72,7 @@ class CalibrationTestTest extends TestCase
         $response->assertSessionHasNoErrors();
         $test = CalibrationTest::first();
         $this->assertNotNull($test);
-        $this->assertEquals('PASS', $test->status);
+        $this->assertEquals('OK', $test->status);
         $this->assertEquals('2026-09-01', $test->next_test_date->toDateString());
         $this->assertEquals(2, $test->items()->count());
         $this->assertTrue($test->items()->first()->is_within_limit);
@@ -94,7 +94,7 @@ class CalibrationTestTest extends TestCase
 
         $test = CalibrationTest::first();
         $this->assertNotNull($test);
-        $this->assertEquals('FAIL', $test->status);
+        $this->assertEquals('NG', $test->status);
         $this->assertEquals('2026-09-10', $test->next_test_date->toDateString());
         $this->assertTrue($test->items()->get()[0]->is_within_limit);
         $this->assertFalse($test->items()->get()[1]->is_within_limit);
@@ -121,10 +121,27 @@ class CalibrationTestTest extends TestCase
 
         $test = CalibrationTest::first();
         $this->assertNotNull($test);
-        $this->assertEquals('PASS', $test->status);
-        // titik 1494 → -6 → NOK per titik, tapi rata-rata ~ -1.57 → OK → PASS
+        $this->assertEquals('OK', $test->status);
+        // titik 1494 → -6 → NOK per titik, tapi rata-rata ~ -1.57 → OK
         $this->assertFalse($test->items()->get()[6]->is_within_limit);
         $this->assertEquals(-1.5714, $test->avg_correction);
+    }
+
+    public function test_manual_status_allows_empty_items(): void
+    {
+        $instrument = $this->makeInstrument();
+
+        $response = $this->actingAs($this->inspector())->post('/tests', [
+            'instrument_id' => $instrument->id,
+            'test_date' => '2026-08-20',
+            'status' => 'SPARE',
+        ]);
+
+        $test = CalibrationTest::first();
+        $this->assertNotNull($test);
+        $this->assertEquals('SPARE', $test->status);
+        $this->assertNull($test->avg_correction);
+        $this->assertEquals(0, $test->items()->count());
     }
 
     public function test_permission_middleware_blocks_inspector_from_report_export(): void

@@ -24,8 +24,8 @@ class DashboardController extends Controller
         $monthTests = CalibrationTest::whereYear('test_date', now()->year)
             ->whereMonth('test_date', now()->month)
             ->get();
-        $passCount = $monthTests->where('status', 'PASS')->count();
-        $failCount = $monthTests->where('status', 'FAIL')->count();
+        $passCount = $monthTests->where('status', 'OK')->count();
+        $failCount = $monthTests->where('status', 'NG')->count();
 
         $dueInstruments = Instrument::with(['type', 'factory', 'department', 'latestTest'])
             ->whereDoesntHave('tests')
@@ -75,7 +75,7 @@ class DashboardController extends Controller
                 $cells[$month] = 'none'; // belum ada uji
             }
             foreach ($tests->where('instrument_id', $instrument->id) as $test) {
-                $cells[(int) $test->test_date->format('n')] = $test->status === 'FAIL' ? 'fail' : 'pass';
+                $cells[(int) $test->test_date->format('n')] = $test->status;
             }
             $rows[] = [
                 'code' => $instrument->code,

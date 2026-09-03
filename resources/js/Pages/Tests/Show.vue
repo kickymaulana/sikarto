@@ -6,10 +6,18 @@ defineOptions({ layout: AppLayout });
 const props = defineProps<{
     test: any;
 }>();
+
+const bannerClass = (status: string) => {
+    if (status === 'OK') return 'ok';
+    if (status === 'NG') return 'ng';
+    if (status === 'SPARE') return 'spare';
+    if (status === 'SERVICE') return 'service';
+    return 'na';
+};
 </script>
 
 <template>
-    <div class="status-banner" :class="test.status === 'PASS' ? 'pass' : 'fail'">
+    <div class="status-banner" :class="bannerClass(test.status)">
         <span class="status-label">Status</span>
         <span class="status-value">{{ test.status }}</span>
     </div>
@@ -47,7 +55,7 @@ const props = defineProps<{
                 <div class="info-row"><span class="info-label">Catatan</span><span>{{ test.notes ?? '—' }}</span></div>
             </div>
 
-            <div class="white-card">
+            <div v-if="test.items.length > 0" class="white-card">
                 <h3 class="card-title">Hasil Uji</h3>
                 <div class="items-list">
                     <div v-for="(item, idx) in test.items" :key="idx" class="item-row">
@@ -75,14 +83,29 @@ const props = defineProps<{
     gap: 4px;
 }
 
-.status-banner.pass {
+.status-banner.ok {
     background: linear-gradient(135deg, #4caf50, #2e7d32);
     box-shadow: 0 8px 20px -5px rgba(76, 175, 80, 0.4);
 }
 
-.status-banner.fail {
+.status-banner.ng {
     background: linear-gradient(135deg, #ef5350, #c62828);
     box-shadow: 0 8px 20px -5px rgba(239, 83, 80, 0.4);
+}
+
+.status-banner.spare {
+    background: linear-gradient(135deg, #42a5f5, #1565c0);
+    box-shadow: 0 8px 20px -5px rgba(66, 165, 245, 0.4);
+}
+
+.status-banner.na {
+    background: linear-gradient(135deg, #90a4ae, #546e7a);
+    box-shadow: 0 8px 20px -5px rgba(144, 164, 174, 0.4);
+}
+
+.status-banner.service {
+    background: linear-gradient(135deg, #ffa726, #e65100);
+    box-shadow: 0 8px 20px -5px rgba(255, 167, 38, 0.4);
 }
 
 .status-label {

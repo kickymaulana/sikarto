@@ -43,7 +43,13 @@ const onPageChange = (page: number) => {
     });
 };
 
-const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
+const statusType = (status: string) => {
+    if (status === 'OK') return 'success';
+    if (status === 'NG') return 'danger';
+    if (status === 'SPARE') return 'info';
+    if (status === 'SERVICE') return 'warning';
+    return 'default';
+};
 </script>
 
 <template>
@@ -61,7 +67,7 @@ const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
         >
             <div class="request-header">
                 <span class="request-code">{{ t.instrument?.code }}</span>
-                <var-chip :type="chipType(t.status)" size="small" round>{{ t.status }}</var-chip>
+                <var-chip :type="statusType(t.status)" size="small" round>{{ t.status }}</var-chip>
             </div>
             <div class="request-meta">
                 <span>{{ t.instrument?.type?.name }}</span>

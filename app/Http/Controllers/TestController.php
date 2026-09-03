@@ -7,6 +7,7 @@ use App\Models\CalibrationTestItem;
 use App\Models\Instrument;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class TestController extends Controller
@@ -43,31 +44,59 @@ class TestController extends Controller
         $data = $request->validate([
             'instrument_id' => 'required|exists:instruments,id',
             'test_date' => 'required|date|before_or_equal:today',
-            'items' => 'required|array|min:1',
+            'status' => 'nullable|in:OK,NG,SPARE,NA,SERVICE',
+            'items' => 'nullable|array',
             'items.*.standard_value' => 'required|numeric',
             'items.*.reading_value' => 'required|numeric',
             'notes' => 'nullable|string',
         ]);
+
+        $manualStatuses = ['SPARE', 'NA', 'SERVICE'];
+        $isManual = isset($data['status']) && in_array($data['status'], $manualStatuses, true);
 
         $instrument = Instrument::with('acceptableLimit')->findOrFail($data['instrument_id']);
         $limit = $instrument->acceptableLimit;
 
         $corrections = [];
         $testItems = [];
-        foreach ($data['items'] as $item) {
-            $correction = (float) $item['reading_value'] - (float) $item['standard_value'];
-            $within = $limit->isWithin($correction);
-            $corrections[] = $correction;
-            $testItems[] = [
-                'standard_value' => $item['standard_value'],
-                'reading_value' => $item['reading_value'],
-                'correction' => round($correction, 4),
-                'is_within_limit' => $within,
-            ];
-        }
 
-        $avgCorrection = round(array_sum($corrections) / count($corrections), 4);
-        $isFail = ! $limit->isWithin($avgCorrection);
+        if ($isManual) {
+            $status = $data['status'];
+            $avgCorrection = null;
+            if (! empty($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    $correction = (float) $item['reading_value'] - (float) $item['standard_value'];
+                    $within = $limit->isWithin($correction);
+                    $corrections[] = $correction;
+                    $testItems[] = [
+                        'standard_value' => $item['standard_value'],
+                        'reading_value' => $item['reading_value'],
+                        'correction' => round($correction, 4),
+                        'is_within_limit' => $within,
+                    ];
+                }
+                $avgCorrection = round(array_sum($corrections) / count($corrections), 4);
+            }
+        } else {
+            if (empty($data['items'])) {
+                throw ValidationException::withMessages(['items' => 'Isi penunjukan minimal 1 titik untuk menghitung status OK/NG.']);
+            }
+
+            foreach ($data['items'] as $item) {
+                $correction = (float) $item['reading_value'] - (float) $item['standard_value'];
+                $within = $limit->isWithin($correction);
+                $corrections[] = $correction;
+                $testItems[] = [
+                    'standard_value' => $item['standard_value'],
+                    'reading_value' => $item['reading_value'],
+                    'correction' => round($correction, 4),
+                    'is_within_limit' => $within,
+                ];
+            }
+
+            $avgCorrection = round(array_sum($corrections) / count($corrections), 4);
+            $status = $limit->isWithin($avgCorrection) ? 'OK' : 'NG';
+        }
 
         $testDate = Carbon::parse($data['test_date']);
         $test = CalibrationTest::create([
@@ -75,7 +104,7 @@ class TestController extends Controller
             'test_date' => $testDate->toDateString(),
             'next_test_date' => $testDate->addMonth()->toDateString(),
             'tester_id' => $request->user()->id,
-            'status' => $isFail ? 'FAIL' : 'PASS',
+            'status' => $status,
             'avg_correction' => $avgCorrection,
             'notes' => $data['notes'] ?? null,
         ]);

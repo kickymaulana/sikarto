@@ -17,8 +17,11 @@ const props = defineProps<{
     factories: Array<{ id: number; name: string }>;
     summary: {
         total: number;
-        pass: number;
-        fail: number;
+        ok: number;
+        ng: number;
+        spare: number;
+        na: number;
+        service: number;
     };
 }>();
 
@@ -39,7 +42,13 @@ const apply = () => {
 };
 
 const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
+const statusType = (status: string) => {
+    if (status === 'OK') return 'success';
+    if (status === 'NG') return 'danger';
+    if (status === 'SPARE') return 'info';
+    if (status === 'SERVICE') return 'warning';
+    return 'default';
+};
 </script>
 
 <template>
@@ -48,7 +57,7 @@ const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
         <var-space direction="column" size="small">
             <var-select v-model="filter.year" placeholder="Tahun" :options="[2025, 2026, 2027].map((y) => ({ label: String(y), value: String(y) }))" />
             <var-select v-model="filter.month" placeholder="Bulan" :options="monthNames.map((m, i) => ({ label: m, value: String(i + 1) }))" />
-            <var-select v-model="filter.status" placeholder="Status" :options="[{ label: 'PASS', value: 'PASS' }, { label: 'FAIL', value: 'FAIL' }]" />
+            <var-select v-model="filter.status" placeholder="Status" :options="['OK','NG','SPARE','NA','SERVICE'].map((s) => ({ label: s, value: s }))" />
             <var-select v-model="filter.factory_id" placeholder="Factory" :options="factories.map((f) => ({ label: f.name, value: String(f.id) }))" />
             <var-button type="primary" block class="filter-btn" @click="apply">Tampilkan</var-button>
         </var-space>
@@ -61,11 +70,23 @@ const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon-wrapper" style="background:#d1fae5"><var-icon name="check" :size="20" color="#10b981" /></div>
-                    <div class="stat-info"><span class="stat-count">{{ summary.pass }}</span><span class="stat-title">PASS</span></div>
+                    <div class="stat-info"><span class="stat-count">{{ summary.ok }}</span><span class="stat-title">OK</span></div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon-wrapper" style="background:#fee2e2"><var-icon name="close-circle-outline" :size="20" color="#ef4444" /></div>
-                    <div class="stat-info"><span class="stat-count">{{ summary.fail }}</span><span class="stat-title">FAIL</span></div>
+                    <div class="stat-info"><span class="stat-count">{{ summary.ng }}</span><span class="stat-title">NG</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrapper" style="background:#e3f2fd"><var-icon name="information" :size="20" color="#2196f3" /></div>
+                    <div class="stat-info"><span class="stat-count">{{ summary.spare }}</span><span class="stat-title">SPARE</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrapper" style="background:#f5f5f5"><var-icon name="minus-circle" :size="20" color="#9e9e9e" /></div>
+                    <div class="stat-info"><span class="stat-count">{{ summary.na }}</span><span class="stat-title">NA</span></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon-wrapper" style="background:#fff3e0"><var-icon name="alert" :size="20" color="#ff9800" /></div>
+                    <div class="stat-info"><span class="stat-count">{{ summary.service }}</span><span class="stat-title">SERVICE</span></div>
                 </div>
             </div>
 
@@ -83,7 +104,7 @@ const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
                 >
                     <div class="request-header">
                         <span class="request-code">{{ t.instrument?.code }}</span>
-                        <var-chip :type="chipType(t.status)" size="small" round>{{ t.status }}</var-chip>
+                        <var-chip :type="statusType(t.status)" size="small" round>{{ t.status }}</var-chip>
                     </div>
                     <div class="request-meta">
                         <span>{{ t.instrument?.type?.name }}</span>

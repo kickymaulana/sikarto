@@ -27,7 +27,7 @@ const props = defineProps<{
         rows: Array<{
             code: string;
             type?: string;
-            cells: Record<number, 'none' | 'pass' | 'fail'>;
+            cells: Record<number, 'none' | 'OK' | 'NG' | 'SPARE' | 'NA' | 'SERVICE'>;
         }>;
     };
 }>();
@@ -41,8 +41,15 @@ const goTests = () => router.get(route('tests.index'));
 const goMasters = () => router.get(route('masters.index', { entity: 'factories' }));
 const goUsers = () => router.get(route('users.index'));
 
-const statusChip = (s: string) => (s === 'pass' ? 'success' : s === 'fail' ? 'danger' : 'default');
-const statusLabel = (s: string) => (s === 'pass' ? 'PASS' : s === 'fail' ? 'FAIL' : '—');
+const matrixColors: Record<string, string> = {
+    none: '#e0e0e0',
+    OK: '#4caf50',
+    NG: '#f44336',
+    SPARE: '#2196f3',
+    NA: '#9e9e9e',
+    SERVICE: '#ff9800',
+};
+const statusLabel = (s: string) => (s === 'none' ? '—' : s);
 </script>
 
 <template>
@@ -127,7 +134,7 @@ const statusLabel = (s: string) => (s === 'pass' ? 'PASS' : s === 'fail' ? 'FAIL
                             <td v-for="(cell, idx) in row.cells" :key="idx" class="center">
                                 <span
                                     class="dot"
-                                    :style="cell === 'pass' ? { background: '#4caf50' } : cell === 'fail' ? { background: '#f44336' } : { background: '#e0e0e0' }"
+                                    :style="{ background: matrixColors[cell] ?? '#e0e0e0' }"
                                     :title="statusLabel(cell)"
                                 ></span>
                             </td>
