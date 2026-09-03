@@ -36,7 +36,6 @@ const entityLabels: Record<string, string> = {
 const pageTitle = computed(() => {
     const current = currentRoute.value;
     if (current === 'dashboard') return auth.value?.user?.name ?? 'SI KARTO';
-    if (current === 'masters.menu') return 'Master Data';
     if (current === 'masters.index') return entityLabels[currentParams.value.entity] ?? 'Master';
     if (current === 'masters.create') return `Tambah ${entityLabels[currentParams.value.entity] ?? ''}`;
     if (current === 'masters.edit') return `Edit ${entityLabels[currentParams.value.entity] ?? ''}`;
@@ -152,7 +151,7 @@ const goBack = () => {
         router.get(route('tests.index'));
     } else if (current.startsWith('masters.')) {
         if (current === 'masters.index') {
-            router.get(route('masters.menu'));
+            router.get(route('dashboard'));
         } else {
             router.get(route('masters.index', { entity: currentParams.value.entity }));
         }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 import AppLayout from '../../Layouts/AppLayout.vue';
@@ -15,6 +15,7 @@ const props = defineProps<{
         from: number;
         to: number;
         total: number;
+        per_page: number;
     };
     filters: {
         status?: string;
@@ -24,24 +25,21 @@ const props = defineProps<{
 
 searchState.value = props.filters?.search ?? '';
 
-const isRefreshing = ref(false);
+const currentPage = computed(() => props.tests.current_page);
 
 const performSearch = (search: string) => {
     router.get(route('tests.index'), { search: search || undefined }, {
         preserveState: true,
         preserveScroll: true,
-        onSuccess: () => { isRefreshing.value = false; },
     });
 };
 
 watch(searchState, (val) => performSearch(val));
 
-const handleRefresh = () => {
-    isRefreshing.value = true;
-    router.get(route('tests.index'), { search: searchState.value || undefined }, {
-        preserveState: false,
-        onSuccess: () => { isRefreshing.value = false; },
-        onError: () => { isRefreshing.value = false; },
+const onPageChange = (page: number) => {
+    router.get(route('tests.index', { page }), {
+        preserveScroll: true,
+        preserveState: true,
     });
 };
 
@@ -49,52 +47,39 @@ const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
 </script>
 
 <template>
-    <var-pull-refresh v-model="isRefreshing" @refresh="handleRefresh">
-        <div v-if="tests.data.length === 0" class="empty-state">
-            <var-icon name="file-document-outline" :size="64" color="#cbd5e1" />
-            <p>Tidak ada data pengujian.</p>
-        </div>
-
-        <div v-else class="request-list">
-            <Link
-                v-for="t in tests.data"
-                :key="t.id"
-                :href="route('tests.show', { test: t.id })"
-                class="request-card"
-            >
-                <div class="request-header">
-                    <span class="request-code">{{ t.instrument?.code }}</span>
-                    <var-chip :type="chipType(t.status)" size="small" round>{{ t.status }}</var-chip>
-                </div>
-                <div class="request-meta">
-                    <span>{{ t.instrument?.type?.name }}</span>
-                    <span>{{ t.test_date }}</span>
-                    <span>Next: {{ t.next_test_date }}</span>
-                    <span>{{ t.tester?.name }}</span>
-                </div>
-            </Link>
-        </div>
-    </var-pull-refresh>
-
-    <div class="pagination">
-        <span
-            v-if="tests.current_page > 1"
-            class="page-btn"
-            @click="router.get(route('tests.index', { page: tests.current_page - 1 }), {}, { preserveScroll: true, preserveState: true })"
-        >
-            Sebelumnya
-        </span>
-        <span class="page-info">
-            {{ tests.from }}–{{ tests.to }} dari {{ tests.total }}
-        </span>
-        <span
-            v-if="tests.current_page < tests.last_page"
-            class="page-btn"
-            @click="router.get(route('tests.index', { page: tests.current_page + 1 }), {}, { preserveScroll: true, preserveState: true })"
-        >
-            Selanjutnya
-        </span>
+    <div v-if="tests.data.length === 0" class="empty-state">
+        <var-icon name="file-document-outline" :size="64" color="#cbd5e1" />
+        <p>Tidak ada data pengujian.</p>
     </div>
+
+    <div v-else class="request-list">
+        <Link
+            v-for="t in tests.data"
+            :key="t.id"
+            :href="route('tests.show', { test: t.id })"
+            class="request-card"
+        >
+            <div class="request-header">
+                <span class="request-code">{{ t.instrument?.code }}</span>
+                <var-chip :type="chipType(t.status)" size="small" round>{{ t.status }}</var-chip>
+            </div>
+            <div class="request-meta">
+                <span>{{ t.instrument?.type?.name }}</span>
+                <span>{{ t.test_date }}</span>
+                <span>Next: {{ t.next_test_date }}</span>
+                <span>{{ t.tester?.name }}</span>
+            </div>
+        </Link>
+    </div>
+
+    <var-pagination
+        :current="currentPage"
+        :total="tests.total"
+        :size="tests.per_page"
+        :max-pager-count="7"
+        @change="onPageChange"
+        class="pagination-wrap"
+    />
 </template>
 
 <style scoped>
@@ -150,26 +135,9 @@ const chipType = (status: string) => (status === 'PASS' ? 'success' : 'danger');
     color: #64748b;
 }
 
-.pagination {
+.pagination-wrap {
     display: flex;
-    align-items: center;
     justify-content: center;
-    gap: 16px;
-    font-size: 13px;
-    padding: 8px 0;
-}
-
-.page-btn {
-    padding: 6px 16px;
-    border-radius: 8px;
-    background: #fff3e0;
-    color: #f57c00;
-    cursor: pointer;
-    font-weight: 600;
-    user-select: none;
-}
-
-.page-info {
-    color: #64748b;
+    margin-top: 12px;
 }
 </style>

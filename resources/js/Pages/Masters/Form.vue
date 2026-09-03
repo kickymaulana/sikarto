@@ -4,6 +4,7 @@ import { router } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 import { Snackbar, Dialog } from '@varlet/ui';
 import AppLayout from '../../Layouts/AppLayout.vue';
+import MastersSidebar from './Sidebar.vue';
 
 defineOptions({ layout: AppLayout });
 
@@ -15,6 +16,7 @@ const props = defineProps<{
     };
     item: Record<string, any> | null;
     options: Record<string, Array<{ id: number; name: string; code?: string }>>;
+    counts: Record<string, number>;
 }>();
 
 const form = reactive<Record<string, any>>({});
@@ -76,7 +78,13 @@ const remove = () => {
 </script>
 
 <template>
-    <div class="white-card">
+    <div>
+        <div class="content-head">
+            <MastersSidebar :entity="entity" :counts="counts" />
+            <h2 class="page-title">{{ isEditing ? `Edit ${config.label}` : `Tambah ${config.label}` }}</h2>
+        </div>
+
+        <div class="white-card">
         <var-space direction="column" size="small">
             <template v-for="f in config.fields" :key="f.key">
                 <div v-if="f.type === 'select'" class="field-block">
@@ -123,10 +131,25 @@ const remove = () => {
                 {{ isEditing ? 'Simpan Perubahan' : 'Simpan' }}
             </var-button>
         </div>
+        </div>
     </div>
 </template>
 
 <style scoped>
+.content-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
 .form-actions {
     margin-top: 16px;
     display: flex;

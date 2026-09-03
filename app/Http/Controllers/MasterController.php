@@ -96,23 +96,7 @@ class MasterController extends Controller
         ],
     ];
 
-    public function menu()
-    {
-        return Inertia::render('Masters/Menu', [
-            'counts' => [
-                'factories' => Factory::count(),
-                'departments' => Department::count(),
-                'types' => InstrumentType::count(),
-                'brands' => Brand::count(),
-                'capacities' => Capacity::count(),
-                'limits' => AcceptableLimit::count(),
-                'specifications' => Specification::count(),
-                'instruments' => Instrument::count(),
-            ],
-        ]);
-    }
-
-    public function index(string $entity)
+    public function index(Request $request, string $entity)
     {
         abort_unless(isset($this->entities[$entity]), 404);
 
@@ -123,6 +107,19 @@ class MasterController extends Controller
             $query->with('factory');
         }
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($config, $search) {
+                foreach ($config['columns'] as $column) {
+                    if ($column['key'] === 'factory') {
+                        $q->orWhereHas('factory', fn ($f) => $f->where('name', 'like', "%{$search}%"));
+                    } else {
+                        $q->orWhere($column['key'], 'like', "%{$search}%");
+                    }
+                }
+            });
+        }
+
         $items = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
 
         return Inertia::render('Masters/Index', [
@@ -130,6 +127,7 @@ class MasterController extends Controller
             'config' => $config,
             'items' => $items,
             'options' => $this->options($entity),
+            'counts' => $this->counts(),
         ]);
     }
 
@@ -144,6 +142,7 @@ class MasterController extends Controller
             'config' => $config,
             'item' => null,
             'options' => $this->options($entity),
+            'counts' => $this->counts(),
         ]);
     }
 
@@ -165,6 +164,7 @@ class MasterController extends Controller
             'config' => $config,
             'item' => $item,
             'options' => $this->options($entity),
+            'counts' => $this->counts(),
         ]);
     }
 
@@ -228,6 +228,20 @@ class MasterController extends Controller
                 'sort_order' => $i,
             ]);
         }
+    }
+
+    private function counts(): array
+    {
+        return [
+            'factories' => Factory::count(),
+            'departments' => Department::count(),
+            'types' => InstrumentType::count(),
+            'brands' => Brand::count(),
+            'capacities' => Capacity::count(),
+            'limits' => AcceptableLimit::count(),
+            'specifications' => Specification::count(),
+            'instruments' => Instrument::count(),
+        ];
     }
 
     private function options(string $entity): array

@@ -15,12 +15,21 @@ use Inertia\Inertia;
 
 class InstrumentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $instruments = Instrument::with(['factory', 'department', 'type', 'brand', 'capacity', 'acceptableLimit', 'specification', 'latestTest'])
-            ->orderBy('code')
-            ->paginate(20)
-            ->withQueryString();
+        $query = Instrument::with(['factory', 'department', 'type', 'brand', 'capacity', 'acceptableLimit', 'specification', 'latestTest']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                    ->orWhereHas('type', fn ($t) => $t->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('brand', fn ($b) => $b->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('specification', fn ($s) => $s->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $instruments = $query->orderBy('code')->paginate(20)->withQueryString();
 
         return Inertia::render('Instruments/Index', [
             'instruments' => $instruments,

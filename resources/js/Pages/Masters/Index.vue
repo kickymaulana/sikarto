@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
+import { router } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 import AppLayout from '../../Layouts/AppLayout.vue';
 import { searchState } from '../../composables/search';
+import MastersSidebar from './Sidebar.vue';
 
 defineOptions({ layout: AppLayout });
 
@@ -17,14 +18,27 @@ const props = defineProps<{
         data: Array<Record<string, any>>;
         current_page: number;
         last_page: number;
+        total: number;
+        per_page: number;
     };
+    counts: Record<string, number>;
 }>();
 
-const listData = ref([...props.items.data]);
-const currentPage = ref(props.items.current_page);
-const loading = ref(false);
-const isRefreshing = ref(false);
-const finished = ref(props.items.current_page >= props.items.last_page);
+const currentPage = computed(() => props.items.current_page);
+
+watch(searchState, (val) => {
+    router.get(route('masters.index', { entity: props.entity }), { search: val || undefined }, {
+        preserveState: true,
+        preserveScroll: true,
+    });
+});
+
+const onPageChange = (page: number) => {
+    router.get(route('masters.index', { entity: props.entity, page }), {
+        preserveScroll: true,
+        preserveState: true,
+    });
+};
 
 const resolved = (item: Record<string, any>, key: string) => {
     if (key === 'factory' && item.factory) return item.factory.name;
@@ -35,125 +49,109 @@ const displayName = (item: Record<string, any>) => {
     const key = props.config.columns[0]?.key ?? 'name';
     return resolved(item, key);
 };
-
-const displayMeta = (item: Record<string, any>) =>
-    props.config.columns.slice(1).map((c) => ({ label: c.label, value: resolved(item, c.key) }));
-
-const filteredItems = computed(() => {
-    if (!searchState.value) return listData.value;
-    const q = searchState.value.toLowerCase();
-    return listData.value.filter((item) =>
-        props.config.columns.some((c) => String(resolved(item, c.key)).toLowerCase().includes(q))
-    );
-});
-
-const loadMore = () => {
-    if (finished.value || loading.value) return;
-    loading.value = true;
-    router.get(route('masters.index', { entity: props.entity, page: currentPage.value + 1 }), {}, {
-        preserveState: true,
-        preserveScroll: true,
-        replace: true,
-        only: ['items'],
-        onSuccess: (page) => {
-            const items = page.props.items as any;
-            listData.value.push(...items.data);
-            currentPage.value = items.current_page;
-            finished.value = currentPage.value >= items.last_page;
-            loading.value = false;
-        },
-        onError: () => { loading.value = false; },
-    });
-};
-
-const refresh = () => {
-    isRefreshing.value = true;
-    router.get(route('masters.index', { entity: props.entity }), {}, {
-        preserveState: false,
-        replace: true,
-        only: ['items'],
-        onSuccess: (page) => {
-            const items = page.props.items as any;
-            listData.value = [...items.data];
-            currentPage.value = items.current_page;
-            finished.value = currentPage.value >= items.last_page;
-            isRefreshing.value = false;
-        },
-        onError: () => { isRefreshing.value = false; },
-    });
-};
 </script>
 
 <template>
-    <var-pull-refresh v-model="isRefreshing" @refresh="refresh">
-        <var-list
-            v-model:loading="loading"
-            :finished="finished"
-            loading-text="Memuat..."
-            finished-text="Semua data sudah dimuat"
-            @load="loadMore"
-        >
-            <div v-if="filteredItems.length === 0 && !loading" class="empty">
-                Belum ada data {{ config.label.toLowerCase() }}.
-            </div>
+    <div>
+        <div class="content-head">
+            <MastersSidebar :entity="entity" :counts="counts" />
+            <h2 class="page-title">{{ config.label }}</h2>
+        </div>
 
-            <div v-for="item in filteredItems" :key="item.id" class="row-card">
-                <Link
-                    :href="route('masters.edit', { entity, id: item.id })"
-                    class="row-link"
-                >
-                    <div class="row-info">
-                        <span class="name">{{ displayName(item) }}</span>
-                        <span v-if="displayMeta(item).length" class="meta">
-                            <template v-for="(m, idx) in displayMeta(item)" :key="idx">
-                                {{ m.label }}: {{ m.value }}{{ idx < displayMeta(item).length - 1 ? ' • ' : '' }}
-                            </template>
-                        </span>
-                    </div>
-                </Link>
-            </div>
-        </var-list>
-    </var-pull-refresh>
+        <var-table class="data-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>{{ config.columns[0]?.label }}</th>
+                        <th v-for="c in config.columns.slice(1)" :key="c.key">{{ c.label }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-if="items.data.length === 0">
+                        <td :colspan="config.columns.length" class="empty">
+                            Belum ada data {{ config.label.toLowerCase() }}.
+                        </td>
+                    </tr>
+                    <tr
+                        v-for="item in items.data"
+                        :key="item.id"
+                        class="data-row"
+                        @click="router.get(route('masters.edit', { entity, id: item.id }))"
+                    >
+                        <td>{{ displayName(item) }}</td>
+                        <td v-for="c in config.columns.slice(1)" :key="c.key">{{ resolved(item, c.key) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </var-table>
+
+        <var-pagination
+            :current="currentPage"
+            :total="items.total"
+            :size="items.per_page"
+            :max-pager-count="7"
+            @change="onPageChange"
+            class="pagination"
+        />
+    </div>
 </template>
 
 <style scoped>
-.empty {
-    text-align: center;
-    padding: 40px;
-    color: #94a3b8;
-}
-
-.row-card {
-    background: #ffffff;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    border: 1px solid #f1f5f9;
-}
-
-.row-link {
+.content-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 14px;
-    text-decoration: none;
-    color: inherit;
+    gap: 4px;
+    margin-bottom: 12px;
 }
 
-.row-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.name {
-    font-size: 14px;
+.page-title {
+    margin: 0;
+    font-size: 18px;
     font-weight: 700;
-    color: #0f172a;
+    color: #1e293b;
 }
 
-.meta {
-    font-size: 12px;
-    color: #64748b;
+.data-table {
+    margin-bottom: 16px;
+}
+
+.data-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.data-table th {
+    font-weight: 700;
+    color: #475569;
+    background: #f8fafc;
+}
+
+.data-row {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.data-row:hover {
+    background: #fff7ed;
+}
+
+.empty {
+    text-align: center;
+    color: #94a3b8;
+    padding: 40px;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 12px;
 }
 </style>

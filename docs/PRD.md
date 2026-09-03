@@ -249,8 +249,8 @@ Referensi desain: aplikasi **SUKIRMAN** (`D:\Apache24\htdocs\sukirman`). Adopsi 
 - Stat grid: 2 kolom, ikon pastel + angka tebal.
 - Feature/quick-link card: bg pastel + border berwarna + ikon + chevron.
 - Request-card list: kode alat monospace bold + chip status + meta (tanggal/tester).
-- Master CRUD: **halaman terpisah** `/masters/{entity}/create` & `/{entity}/{id}/edit` (bukan inline form/dialog). List = row-card + klik-card → halaman edit; tombol Edit/Hapus tidak di list, Hapus di halaman edit. Contoh: `Masters/Form.vue`, `Instruments/Form.vue`.
-- **Master menu** `/masters`: landing card grid semua entity (Factory/Departemen/Jenis Alat/Merk/Kapasitas/Acceptable Limit/Alat Ukur) + jumlah data.
+- Master CRUD: **halaman terpisah** `/masters/{entity}/create` & `/{entity}/{id}/edit` (bukan inline form/dialog). List = `var-table` + klik-barris → halaman edit; tombol Edit/Hapus tidak di list, Hapus di halaman edit. Contoh: `Masters/Form.vue`, `Instruments/Form.vue`.
+- **Master menu** `/masters`: redirect ke `/masters/{entity}`. Halaman `Masters/Index.vue` = **sidebar kiri TreeMenu** (sticky, tetap saat pindah entity) + `var-table` (data entity) + `var-pagination`. Toggle sidebar di mobile. `/masters` default entity = `factories`.
 - List master & alat ukur = android pattern: **icon search di app bar** → toggle kotak pencarian (shared `searchState` via `composables/search.ts`), `var-pull-refresh` + `var-list` infinite scroll (load-more via `router.get` + `only: [...]` + merge props).
 - **AppBar satu baris**: judul halaman (dari `pageTitle` map di `AppLayout.vue`) + back (sub-page) + icon search (list) + icon `power` logout. Bottom nav & FAB hanya di halaman dashboard. **Dashboard appbar = nama user yang login** (bukan brand). AppBar sticky lengket ke browser (`html, body { margin:0 }` di `app.css`).
 - **Semua URL di JS wajib Ziggy `route()`** — app di subfolder `/sikarto/public`; URL hardcoded → 404. Link eksternal SSO pakai `<a :href="route('sso.redirect')">`.

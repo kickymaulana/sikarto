@@ -38,7 +38,7 @@ const can = (p: string) => !!page.props.auth?.user?.permissions.includes(p);
 
 const goEntry = () => router.get(route('tests.create'));
 const goTests = () => router.get(route('tests.index'));
-const goMasters = () => router.get(route('masters.menu'));
+const goMasters = () => router.get(route('masters.index', { entity: 'factories' }));
 const goUsers = () => router.get(route('users.index'));
 
 const statusChip = (s: string) => (s === 'pass' ? 'success' : s === 'fail' ? 'danger' : 'default');
