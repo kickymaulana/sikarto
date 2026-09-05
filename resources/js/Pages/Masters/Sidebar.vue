@@ -19,12 +19,15 @@ const menuItems = [
     { label: 'Acceptable Limit', icon: 'checkbox-marked-circle', value: 'limits' },
     { label: 'Spesifikasi', icon: 'file-document-outline', value: 'specifications' },
     { label: 'Alat Ukur', icon: 'wrench', value: 'instruments' },
+    { label: 'Matriks Uji', icon: 'calendar-month', value: 'matrix' },
 ];
 
 const go = (value: string) => {
     show.value = false;
     if (value === 'instruments') {
         router.get(route('instruments.index'));
+    } else if (value === 'matrix') {
+        router.get(route('masters.matrix'));
     } else if (value !== props.entity) {
         router.get(route('masters.index', { entity: value }));
     }

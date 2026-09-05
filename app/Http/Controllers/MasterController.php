@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AcceptableLimit;
 use App\Models\Brand;
+use App\Models\CalibrationTest;
 use App\Models\Capacity;
 use App\Models\Department;
 use App\Models\Factory;
@@ -95,6 +96,55 @@ class MasterController extends Controller
             'rules' => ['name' => 'required|string|max:255'],
         ],
     ];
+
+    public function matrix(Request $request)
+    {
+        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        $months = range(1, 12);
+
+        $tests = CalibrationTest::with('instrument')
+            ->whereYear('test_date', $year)
+            ->orderBy('test_date')
+            ->get(['id', 'instrument_id', 'test_date', 'next_test_date', 'status']);
+
+        $instruments = Instrument::with('type')->orderBy('code')->get();
+
+        $rows = [];
+        foreach ($instruments as $instrument) {
+            $testCell = [];
+            $nextCell = [];
+            foreach ($months as $m) {
+                $testCell[$m] = ['day' => '', 'status' => 'none'];
+                $nextCell[$m] = ['day' => '', 'status' => 'none'];
+            }
+            foreach ($tests->where('instrument_id', $instrument->id) as $test) {
+                $testMonth = (int) $test->test_date->format('n');
+                $nextMonth = $test->next_test_date ? (int) $test->next_test_date->format('n') : null;
+                $testCell[$testMonth] = [
+                    'day' => (string) (int) $test->test_date->format('j'),
+                    'status' => $test->status,
+                ];
+                if ($nextMonth && $nextMonth !== $testMonth) {
+                    $nextCell[$nextMonth] = [
+                        'day' => (string) (int) $test->next_test_date->format('j'),
+                        'status' => $test->status,
+                    ];
+                }
+            }
+            $rows[] = [
+                'code' => $instrument->code,
+                'type' => $instrument->type?->name,
+                'test_cell' => $testCell,
+                'next_cell' => $nextCell,
+            ];
+        }
+
+        return Inertia::render('Masters/Matrix', [
+            'year' => $year,
+            'rows' => $rows,
+            'counts' => $this->counts(),
+        ]);
+    }
 
     public function index(Request $request, string $entity)
     {

@@ -33,6 +33,8 @@ Route::middleware('auth')->group(function () {
     // Master data (generic, guard by permission)
     Route::get('/masters', fn () => redirect()->route('masters.index', ['entity' => 'factories']))
         ->middleware('permission:master.read');
+    Route::get('/masters/matrix', [MasterController::class, 'matrix'])->name('masters.matrix')
+        ->middleware('permission:master.read');
     Route::get('/masters/{entity}/create', [MasterController::class, 'create'])->name('masters.create')
         ->middleware('permission:master.create');
     Route::get('/masters/{entity}/{id}/edit', [MasterController::class, 'edit'])->name('masters.edit')

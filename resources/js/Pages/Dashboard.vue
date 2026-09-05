@@ -6,13 +6,6 @@ import AppLayout from '../Layouts/AppLayout.vue';
 defineOptions({ layout: AppLayout });
 
 const props = defineProps<{
-    stats: {
-        total: number;
-        due: number;
-        overdue: number;
-        pass: number;
-        fail: number;
-    };
     dueInstruments: Array<{
         id: number;
         code: string;
@@ -22,17 +15,8 @@ const props = defineProps<{
         latest_test_date?: string;
         next_test_date?: string;
     }>;
-    monthlyMatrix: {
-        year: number;
-        rows: Array<{
-            code: string;
-            type?: string;
-            cells: Record<number, 'none' | 'OK' | 'NG' | 'SPARE' | 'NA' | 'SERVICE'>;
-        }>;
-    };
 }>();
 
-const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const page = usePage();
 const can = (p: string) => !!page.props.auth?.user?.permissions.includes(p);
 
@@ -40,16 +24,6 @@ const goEntry = () => router.get(route('tests.create'));
 const goTests = () => router.get(route('tests.index'));
 const goMasters = () => router.get(route('masters.index', { entity: 'factories' }));
 const goUsers = () => router.get(route('users.index'));
-
-const matrixColors: Record<string, string> = {
-    none: '#e0e0e0',
-    OK: '#4caf50',
-    NG: '#f44336',
-    SPARE: '#2196f3',
-    NA: '#9e9e9e',
-    SERVICE: '#ff9800',
-};
-const statusLabel = (s: string) => (s === 'none' ? '—' : s);
 </script>
 
 <template>
@@ -112,38 +86,6 @@ const statusLabel = (s: string) => (s === 'none' ? '—' : s);
                     <span>{{ i.factory }} / {{ i.department }}</span>
                     <span>Uji terakhir: {{ i.latest_test_date ?? '—' }}</span>
                 </div>
-            </div>
-        </div>
-
-        <div class="section-header">
-            <h3 class="section-title">Matriks Uji Bulanan {{ monthlyMatrix.year }}</h3>
-        </div>
-
-        <div class="white-card">
-            <div class="table-scroll">
-                <table class="matrix-table">
-                    <thead>
-                        <tr>
-                            <th>Kode Alat</th>
-                            <th v-for="m in monthNames" :key="m" class="center">{{ m }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="row in monthlyMatrix.rows" :key="row.code">
-                            <td class="cell-code">{{ row.code }}</td>
-                            <td v-for="(cell, idx) in row.cells" :key="idx" class="center">
-                                <span
-                                    class="dot"
-                                    :style="{ background: matrixColors[cell] ?? '#e0e0e0' }"
-                                    :title="statusLabel(cell)"
-                                ></span>
-                            </td>
-                        </tr>
-                        <tr v-if="monthlyMatrix.rows.length === 0">
-                            <td :colspan="13" class="center">Tidak ada alat</td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -277,39 +219,5 @@ const statusLabel = (s: string) => (s === 'none' ? '—' : s);
 
 .empty-card p {
     margin: 8px 0 0;
-}
-
-.table-scroll {
-    overflow-x: auto;
-}
-
-.matrix-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-}
-
-.matrix-table th,
-.matrix-table td {
-    padding: 8px 4px;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.matrix-table .center {
-    text-align: center;
-}
-
-.cell-code {
-    font-family: monospace;
-    font-weight: 700;
-    white-space: nowrap;
-    padding-right: 12px !important;
-}
-
-.dot {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
 }
 </style>
