@@ -47,7 +47,12 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:master.delete');
 
     // Instruments (full CRUD)
+    Route::post('/instruments/{instrument}/activate', [InstrumentController::class, 'activate'])
+        ->name('instruments.activate')
+        ->withTrashed()
+        ->middleware('permission:master.update');
     Route::resource('instruments', InstrumentController::class)
+        ->withTrashed()
         ->middleware('permission:master.read|master.create|master.update|master.delete');
 
     // Pengujian

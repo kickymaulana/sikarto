@@ -71,6 +71,17 @@ const remove = () => {
         },
     });
 };
+
+const activate = () => {
+    router.post(route('instruments.activate', { instrument: props.instrument!.id }), {}, {
+        onError: () => Snackbar.error('Gagal mengaktifkan alat.'),
+    });
+};
+
+const isInactive = computed(() => {
+    if (!props.instrument) return false;
+    return props.instrument.deleted_at != null || props.instrument.is_active === false;
+});
 </script>
 
 <template>
@@ -114,7 +125,10 @@ const remove = () => {
             </div>
         </var-space>
         <div class="form-actions">
-            <var-button v-if="isEditing" type="danger" block @click="remove" class="delete-btn">
+            <var-button v-if="isEditing && isInactive" type="success" block @click="activate" class="delete-btn">
+                Aktifkan Kembali
+            </var-button>
+            <var-button v-else-if="isEditing" type="danger" block @click="remove" class="delete-btn">
                 Nonaktifkan Alat
             </var-button>
             <var-button type="primary" block :loading="saving" @click="submit">

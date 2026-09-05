@@ -17,7 +17,7 @@ class InstrumentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Instrument::with(['factory', 'department', 'type', 'brand', 'capacity', 'acceptableLimit', 'specification', 'latestTest']);
+        $query = Instrument::withTrashed()->with(['factory', 'department', 'type', 'brand', 'capacity', 'acceptableLimit', 'specification', 'latestTest']);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -95,10 +95,21 @@ class InstrumentController extends Controller
 
     public function destroy(Instrument $instrument)
     {
-        $instrument->delete();
+        $instrument->update(['is_active' => false]);
 
         return redirect()->route('instruments.index')
             ->with('flash', ['success' => 'Alat ukur berhasil dinonaktifkan.']);
+    }
+
+    public function activate(Instrument $instrument)
+    {
+        if ($instrument->trashed()) {
+            $instrument->restore();
+        }
+        $instrument->update(['is_active' => true]);
+
+        return redirect()->route('instruments.index')
+            ->with('flash', ['success' => 'Alat ukur berhasil diaktifkan kembali.']);
     }
 
     private function options(): array

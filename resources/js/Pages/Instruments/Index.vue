@@ -49,7 +49,7 @@ const onPageChange = (page: number) => {
                 <span class="meta">
                     {{ i.type?.name }} • {{ i.brand?.name }} • {{ i.capacity?.name }}
                     {{ i.specification?.name ? '• '+i.specification.name : '' }}
-                    {{ i.is_active ? '' : '• NONAKTIF' }}
+                    <span v-if="i.deleted_at || !i.is_active" class="nonaktif">• NONAKTIF</span>
                 </span>
             </div>
         </Link>
@@ -104,6 +104,11 @@ const onPageChange = (page: number) => {
 .meta {
     font-size: 12px;
     color: #64748b;
+}
+
+.nonaktif {
+    color: #ef4444;
+    font-weight: 600;
 }
 
 .pagination {
