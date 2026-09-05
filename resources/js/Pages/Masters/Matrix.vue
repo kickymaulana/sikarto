@@ -10,9 +10,14 @@ type Cell = { day: string; status: string };
 
 const props = defineProps<{
     year: number;
+    typeId: number | null;
+    types: Array<{ id: number; name: string }>;
     rows: Array<{
         code: string;
         type?: string;
+        brand?: string;
+        capacity?: string;
+        location?: string;
         test_cell: Record<number, Cell>;
         next_cell: Record<number, Cell>;
     }>;
@@ -22,6 +27,11 @@ const props = defineProps<{
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 const years = Array.from({ length: 11 }, (_, i) => 2020 + i).map((y) => ({ label: String(y), value: String(y) }));
+
+const typeOptions = [
+    { label: 'Semua Jenis', value: '' },
+    ...props.types.map((t) => ({ label: t.name, value: String(t.id) })),
+];
 
 const matrixColors: Record<string, string> = {
     none: '#e0e0e0',
@@ -42,11 +52,21 @@ const matrixBg: Record<string, string> = {
 const statusLabel = (s: string) => (s === 'none' ? '—' : s);
 
 const onYearChange = (value: string | number) => {
-    router.get(route('masters.matrix', { year: String(value) }), {}, {
+    router.get(route('masters.matrix', { year: String(value), type_id: props.typeId ?? undefined }), {}, {
         preserveState: true,
         preserveScroll: true,
     });
 };
+
+const onTypeChange = (value: string | number) => {
+    const typeId = value === '' || value === null || value === undefined ? undefined : Number(value);
+    router.get(route('masters.matrix', { year: props.year, type_id: typeId }), {}, {
+        preserveState: true,
+        preserveScroll: true,
+    });
+};
+
+
 </script>
 
 <template>
@@ -57,21 +77,29 @@ const onYearChange = (value: string | number) => {
         </div>
 
         <div class="toolbar">
-            <div class="field-block year-field">
-                <label class="field-label">Tahun</label>
-                <var-select
-                    :model-value="String(year)"
-                    placeholder="Tahun"
-                    :options="years"
-                    @update:model-value="onYearChange"
-                />
-            </div>
+            <var-select
+                class="year-field"
+                :model-value="String(year)"
+                placeholder="Tahun"
+                :options="years"
+                @update:model-value="onYearChange"
+            />
+            <var-select
+                class="type-field"
+                :model-value="String(typeId ?? '')"
+                placeholder="Pilih jenis"
+                :options="typeOptions"
+                @update:model-value="onTypeChange"
+            />
             <div class="legend">
                 <span v-for="(color, key) in matrixColors" :key="key" class="legend-item">
                     <span class="dot" :style="{ background: color }"></span>
                     {{ key === 'none' ? 'Belum Uji' : key }}
                 </span>
             </div>
+            <a class="export-btn" :href="route('masters.matrix.export', { year, type_id: typeId ?? undefined })">
+                <var-button type="primary" block>📊 Export Excel</var-button>
+            </a>
         </div>
 
         <div class="white-card table-wrap">
@@ -79,7 +107,10 @@ const onYearChange = (value: string | number) => {
                 <table class="matrix-table">
                     <thead>
                         <tr>
-                            <th rowspan="2" class="sticky-col">Kode Alat</th>
+                            <th rowspan="2" class="sticky-col col-code">Kode Alat</th>
+                            <th rowspan="2" class="sticky-col col-info">Merk</th>
+                            <th rowspan="2" class="sticky-col col-info">Kapasitas</th>
+                            <th rowspan="2" class="sticky-col col-info">Lokasi</th>
                             <th v-for="m in monthNames" :key="`m-${m}`" colspan="2" class="center">{{ m }}</th>
                         </tr>
                         <tr>
@@ -91,7 +122,10 @@ const onYearChange = (value: string | number) => {
                     </thead>
                     <tbody>
                         <tr v-for="row in rows" :key="row.code">
-                            <td class="cell-code sticky-col">{{ row.code }}</td>
+                            <td class="cell-code sticky-col col-code">{{ row.code }}</td>
+                            <td class="cell-info sticky-col col-info">{{ row.brand ?? '—' }}</td>
+                            <td class="cell-info sticky-col col-info">{{ row.capacity ?? '—' }}</td>
+                            <td class="cell-info sticky-col col-info">{{ row.location ?? '—' }}</td>
                             <template v-for="(m, idx) in monthNames" :key="`${row.code}-${idx}`">
                                 <td
                                     class="cell-day center"
@@ -110,7 +144,7 @@ const onYearChange = (value: string | number) => {
                             </template>
                         </tr>
                         <tr v-if="rows.length === 0">
-                            <td :colspan="25" class="center">Tidak ada alat</td>
+                            <td :colspan="28" class="center">Tidak ada alat</td>
                         </tr>
                     </tbody>
                 </table>
@@ -137,14 +171,17 @@ const onYearChange = (value: string | number) => {
 .toolbar {
     display: flex;
     align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 12px;
     flex-wrap: wrap;
 }
 
 .year-field {
     width: 140px;
+}
+
+.type-field {
+    width: 240px;
 }
 
 .legend {
@@ -156,6 +193,7 @@ const onYearChange = (value: string | number) => {
     background: #fff;
     border-radius: 12px;
     border: 1px solid #f1f5f9;
+    margin-left: auto;
 }
 
 .legend-item {
@@ -171,6 +209,13 @@ const onYearChange = (value: string | number) => {
     width: 12px;
     height: 12px;
     border-radius: 50%;
+}
+
+.export-btn {
+    width: 130px;
+    height: 40px;
+    text-decoration: none;
+    display: block;
 }
 
 .table-wrap {
@@ -216,9 +261,21 @@ const onYearChange = (value: string | number) => {
     font-family: monospace;
     font-weight: 700;
     white-space: nowrap;
-    padding-right: 12px !important;
+    padding-right: 8px !important;
     text-align: left !important;
-    min-width: 110px;
+    min-width: 80px;
+    background: #ffffff;
+}
+
+.cell-info {
+    white-space: nowrap;
+    font-size: 11px;
+    color: #475569;
+    text-align: left;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    background: #ffffff;
+    border-right: 1px solid #e2e8f0;
 }
 
 .cell-day {
@@ -230,8 +287,34 @@ const onYearChange = (value: string | number) => {
 
 .sticky-col {
     position: sticky;
-    left: 0;
     z-index: 1;
-    background: inherit;
+    background: #ffffff;
+}
+
+.col-code {
+    left: 0;
+    min-width: 80px;
+}
+
+.col-info:nth-of-type(2),
+.matrix-table th.sticky-col:nth-of-type(2) {
+    left: 80px;
+    min-width: 90px;
+}
+
+.col-info:nth-of-type(3),
+.matrix-table th.sticky-col:nth-of-type(3) {
+    left: 170px;
+    min-width: 90px;
+}
+
+.col-info:nth-of-type(4),
+.matrix-table th.sticky-col:nth-of-type(4) {
+    left: 260px;
+    min-width: 140px;
+}
+
+tbody tr:nth-child(n+2) td.sticky-col {
+    background: #ffffff;
 }
 </style>

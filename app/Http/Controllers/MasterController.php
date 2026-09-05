@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\MatrixExport;
 use App\Models\AcceptableLimit;
 use App\Models\Brand;
 use App\Models\CalibrationTest;
@@ -13,6 +14,7 @@ use App\Models\InstrumentType;
 use App\Models\Specification;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterController extends Controller
 {
@@ -99,15 +101,47 @@ class MasterController extends Controller
 
     public function matrix(Request $request)
     {
-        $year = $request->filled('year') ? (int) $request->year : now()->year;
+        [$year, $typeId, $types, $rows] = $this->buildMatrixData($request, null);
+
+        return Inertia::render('Masters/Matrix', [
+            'year' => $year,
+            'typeId' => $typeId,
+            'types' => $types,
+            'rows' => $rows,
+            'counts' => $this->counts(),
+        ]);
+    }
+
+    public function matrixExport(Request $request)
+    {
+        [$year, $typeId, $types, $rows] = $this->buildMatrixData($request, null);
+
+        $typeName = $typeId ? InstrumentType::find($typeId)?->name : 'Semua Jenis';
+        $fileName = 'Matriks_Uji_'.str_replace(' ', '-', (string) $typeName).'-'.$year.'.xlsx';
+
+        return Excel::download(new MatrixExport($rows, $year, (string) $typeName), $fileName);
+    }
+
+    private function buildMatrixData(Request $request, ?int $forcedYear): array
+    {
+        $year = $forcedYear ?? ($request->filled('year') ? (int) $request->year : now()->year);
         $months = range(1, 12);
+
+        $defaultType = InstrumentType::where('name', 'Timbangan Digital')->first();
+        $typeId = $request->filled('type_id') ? (int) $request->type_id : ($defaultType?->id);
 
         $tests = CalibrationTest::with('instrument')
             ->whereYear('test_date', $year)
             ->orderBy('test_date')
             ->get(['id', 'instrument_id', 'test_date', 'next_test_date', 'status']);
 
-        $instruments = Instrument::with('type')->orderBy('code')->get();
+        $instrumentsQuery = Instrument::with(['type', 'brand', 'capacity', 'factory', 'department']);
+        if ($typeId) {
+            $instrumentsQuery->where('instrument_type_id', $typeId);
+        }
+        $instruments = $instrumentsQuery->get();
+
+        $types = InstrumentType::orderBy('name')->get(['id', 'name']);
 
         $rows = [];
         foreach ($instruments as $instrument) {
@@ -131,19 +165,52 @@ class MasterController extends Controller
                     ];
                 }
             }
+            $location = trim(
+                ($instrument->factory?->name ?? '').' / '.($instrument->department?->name ?? ''),
+                ' /'
+            );
             $rows[] = [
                 'code' => $instrument->code,
                 'type' => $instrument->type?->name,
+                'brand' => $instrument->brand?->name,
+                'capacity' => $instrument->capacity?->name,
+                'location' => $location !== '' ? $location : null,
                 'test_cell' => $testCell,
                 'next_cell' => $nextCell,
             ];
         }
 
-        return Inertia::render('Masters/Matrix', [
-            'year' => $year,
-            'rows' => $rows,
-            'counts' => $this->counts(),
-        ]);
+        usort($rows, fn ($a, $b) => $this->naturalCodeCompare($a['code'], $b['code']));
+
+        return [$year, $typeId, $types, $rows];
+    }
+
+    private function naturalCodeCompare(string $a, string $b): int
+    {
+        $aParts = preg_split('/(\d+)/', $a, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $bParts = preg_split('/(\d+)/', $b, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        $count = max(count($aParts), count($bParts));
+        for ($i = 0; $i < $count; $i++) {
+            $aSeg = $aParts[$i] ?? '';
+            $bSeg = $bParts[$i] ?? '';
+            $aIsNum = $aSeg !== '' && ctype_digit($aSeg);
+            $bIsNum = $bSeg !== '' && ctype_digit($bSeg);
+
+            $cmp = 0;
+            if ($aIsNum && $bIsNum) {
+                $cmp = (int) $aSeg <=> (int) $bSeg;
+            } elseif ($aIsNum !== $bIsNum) {
+                $cmp = $aIsNum ? -1 : 1;
+            } else {
+                $cmp = strcmp($aSeg, $bSeg);
+            }
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+        }
+
+        return 0;
     }
 
     public function index(Request $request, string $entity)

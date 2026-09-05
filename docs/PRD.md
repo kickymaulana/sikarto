@@ -144,11 +144,11 @@ calibration_test_items (id, calibration_test_id, standard_value,
 
 ### FR-1 Dashboard & Scheduling
 - **FR-1.1** Statistik ringkas: total alat, alat perlu uji bulan ini, alat terlambat (overdue), rasio PASS/FAIL bulan berjalan.
-- **FR-1.2** Matriks/kalender status uji per alat per bulan (Jan–Des): warna status (hijau = pass, merah = fail/overdue, abu = belum ada uji).
+- **FR-1.2** Matriks/kalender status uji per alat per bulan (Jan–Des) — sekarang adalah **halaman sendiri di `/masters/matrix`** (bukan section di dashboard). Warna status: hijau=OK, merah=NG, biru=SPARE, abu-abu=NA, oranye=SERVICE, putih=belum ada uji. Tiap bulan punya 2 kolom (Uji = test_date, Next = next_test_date) berisi tanggal saja (misal `21`) atau `—`. Kolom info instrumen (Kode Alat, Merk, Kapasitas, Lokasi) sticky kiri.
 - **FR-1.3** Daftar alat yang jatuh tempo bulan ini (berdasarkan `next_test_date`), satu klik → langsung ke form entry.
 - **FR-1.4** Filter dashboard per factory & departemen.
 
-**Flow:** Login → Dashboard → lihat matriks → klik alat jatuh tempo → masuk form pengujian.
+**Flow:** Login → Dashboard → klik "Alat Perlu Uji" → masuk form pengujian. Matriks dilihat di `/masters/matrix`.
 
 ### FR-2 Form Entry Pengujian (mobile/web friendly)
 - **FR-2.1** Input/pilih `Kode Alat` → sistem auto-fill: Factory, Departemen, Jenis, Merk, Kapasitas, Toleransi.
@@ -308,4 +308,11 @@ Referensi desain: aplikasi **SUKIRMAN** (`D:\Apache24\htdocs\sukirman`). Adopsi 
 4. CRUD 7 master data.
 5. Form entry pengujian (autofill + hitung otomatis + PASS/FAIL + next date).
 6. Dashboard & matriks scheduling.
+
+#### 6.5.1 Matriks Uji Bulanan (`/masters/matrix`)
+- Halaman sendiri (bukan section di Dashboard). Toolbar: dropdown **Tahun** + dropdown **Jenis Alat** (default = `Timbangan Digital`, TANPA label) + legenda + tombol **📊 Export Excel**.
+- Tabel 12 bulan × 2 kolom (Uji/Next). Cell isi: `21` (tanggal saja) atau `—` jika kosong, background warna status halus. 4 kolom info instrumen (Kode Alat, Merk, Kapasitas, Lokasi) sticky kiri, **natural sort** ascending by `code`.
+- Backend: `MasterController::matrix()`. Filter `?year=&type_id=`. Default `type_id` = `Timbangan Digital` id.
+- **Export Excel**: tombol → GET `masters.matrix.export` (permission `master.read`) → `maatwebsite/excel` → `App\Exports\MatrixExport` (header bold + border + bg status, landscape A4 fit-to-width, TANPA judul, 1 sheet per tahun). Filename: `Matriks_Uji_{typeName}-{year}.xlsx`.
+- **Natural sort**: `usort` di `buildMatrixData` — split by digits, compare numeric segments numerically (W.FL.1 < W.FL.2 < W.FL.10 < W.FL.20).
 7. Laporan + export Excel/PDF.
