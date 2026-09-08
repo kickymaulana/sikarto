@@ -103,7 +103,7 @@ class MasterController extends Controller
     {
         [$year, $typeId, $types, $rows] = $this->buildMatrixData($request, null);
 
-        return Inertia::render('Masters/Matrix', [
+        return Inertia::render('Laporan/Matrix', [
             'year' => $year,
             'typeId' => $typeId,
             'types' => $types,

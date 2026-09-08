@@ -23,6 +23,7 @@ const can = (p: string) => !!page.props.auth?.user?.permissions.includes(p);
 const goEntry = () => router.get(route('tests.create'));
 const goTests = () => router.get(route('tests.index'));
 const goMasters = () => router.get(route('masters.index', { entity: 'factories' }));
+const goLaporan = () => router.get(route('laporan.index'));
 const goUsers = () => router.get(route('users.index'));
 </script>
 
@@ -51,6 +52,15 @@ const goUsers = () => router.get(route('users.index'));
             <div class="feature-text">
                 <span class="feature-title">Master Data</span>
                 <span class="feature-count">Kelola factory, alat ukur, toleransi</span>
+            </div>
+            <var-icon name="chevron-right" :size="24" color="#94a3b8" />
+        </div>
+
+        <div v-if="can('report.read')" class="feature-card report-card" @click="goLaporan">
+            <div class="feature-icon">📊</div>
+            <div class="feature-text">
+                <span class="feature-title">Laporan</span>
+                <span class="feature-count">Menu laporan dummy mirip master</span>
             </div>
             <var-icon name="chevron-right" :size="24" color="#94a3b8" />
         </div>
@@ -121,6 +131,11 @@ const goUsers = () => router.get(route('users.index'));
 .master-card {
     background: #fef3c7;
     border-color: #fde68a;
+}
+
+.report-card {
+    background: #fdf2f8;
+    border-color: #fbcfe8;
 }
 
 .users-card {

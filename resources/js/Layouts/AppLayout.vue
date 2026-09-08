@@ -46,6 +46,8 @@ const pageTitle = computed(() => {
     if (current === 'tests.create') return 'Entry Pengujian';
     if (current === 'tests.show') return 'Detail Pengujian';
     if (current === 'reports.index') return 'Laporan & Rekapitulasi';
+    if (current === 'laporan.index') return 'Laporan';
+    if (current === 'laporan.matrix') return 'Matriks Uji Bulanan';
     if (current === 'users.index') return 'Kelola Pengguna';
     return 'SI KARTO';
 });

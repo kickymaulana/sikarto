@@ -33,10 +33,14 @@ Route::middleware('auth')->group(function () {
     // Master data (generic, guard by permission)
     Route::get('/masters', fn () => redirect()->route('masters.index', ['entity' => 'factories']))
         ->middleware('permission:master.read');
-    Route::get('/masters/matrix', [MasterController::class, 'matrix'])->name('masters.matrix')
+    Route::get('/masters/matrix', fn () => redirect()->route('laporan.matrix'))
         ->middleware('permission:master.read');
-    Route::get('/masters/matrix/export', [MasterController::class, 'matrixExport'])->name('masters.matrix.export')
+    Route::get('/masters/matrix/export', fn () => redirect()->route('laporan.matrix.export'))
         ->middleware('permission:master.read');
+    Route::get('/laporan/matrix', [MasterController::class, 'matrix'])->name('laporan.matrix')
+        ->middleware('permission:master.read|report.read');
+    Route::get('/laporan/matrix/export', [MasterController::class, 'matrixExport'])->name('laporan.matrix.export')
+        ->middleware('permission:master.read|report.read');
     Route::get('/masters/{entity}/create', [MasterController::class, 'create'])->name('masters.create')
         ->middleware('permission:master.create');
     Route::get('/masters/{entity}/{id}/edit', [MasterController::class, 'edit'])->name('masters.edit')
@@ -71,5 +75,7 @@ Route::middleware('auth')->group(function () {
 
     // Laporan
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index')
+        ->middleware('permission:report.read');
+    Route::get('/laporan', fn () => redirect()->route('laporan.matrix'))->name('laporan.index')
         ->middleware('permission:report.read');
 });

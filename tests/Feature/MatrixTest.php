@@ -82,10 +82,10 @@ class MatrixTest extends TestCase
         $this->makeInstrument(['code' => 'TD-001', 'name' => 'Timbangan A', 'instrument_type_id' => $timbangan->id]);
         $this->makeInstrument(['code' => 'CL-001', 'name' => 'Caliper A', 'instrument_type_id' => $caliper->id]);
 
-        $response = $this->actingAs($user)->get('/masters/matrix');
+        $response = $this->actingAs($user)->get('/laporan/matrix');
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->component('Masters/Matrix')
+            ->component('Laporan/Matrix')
             ->where('typeId', $timbangan->id)
             ->has('rows', 1)
             ->where('rows.0.code', 'TD-001')
@@ -101,7 +101,7 @@ class MatrixTest extends TestCase
         $this->makeInstrument(['code' => 'TD-001', 'name' => 'Timbangan A', 'instrument_type_id' => $timbangan->id]);
         $this->makeInstrument(['code' => 'CL-001', 'name' => 'Caliper A', 'instrument_type_id' => $caliper->id]);
 
-        $response = $this->actingAs($user)->get('/masters/matrix?type_id='.$caliper->id);
+        $response = $this->actingAs($user)->get('/laporan/matrix?type_id='.$caliper->id);
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->where('typeId', $caliper->id)
@@ -123,7 +123,7 @@ class MatrixTest extends TestCase
             ]);
         }
 
-        $response = $this->actingAs($user)->get('/masters/matrix?type_id='.$timbangan->id);
+        $response = $this->actingAs($user)->get('/laporan/matrix?type_id='.$timbangan->id);
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->where('rows.0.code', 'W.FL.1')
@@ -140,7 +140,7 @@ class MatrixTest extends TestCase
         $timbangan = InstrumentType::create(['name' => 'Timbangan Digital']);
         $this->makeInstrument(['code' => 'W.FL.1', 'name' => 'Alat A', 'instrument_type_id' => $timbangan->id]);
 
-        $response = $this->actingAs($user)->get('/masters/matrix/export?type_id='.$timbangan->id.'&year=2026');
+        $response = $this->actingAs($user)->get('/laporan/matrix/export?type_id='.$timbangan->id.'&year=2026');
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $filename = $response->headers->get('content-disposition');
@@ -160,7 +160,7 @@ class MatrixTest extends TestCase
 
     public function test_matrix_export_requires_authentication(): void
     {
-        $response = $this->get('/masters/matrix/export');
+        $response = $this->get('/laporan/matrix/export');
         $response->assertRedirect();
     }
 }
