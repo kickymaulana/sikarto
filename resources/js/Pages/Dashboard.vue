@@ -70,7 +70,7 @@ const goUsers = () => router.get(route('users.index'));
                 <var-icon name="chevron-right" :size="24" color="#94a3b8" />
             </div>
 
-            <div v-if="can('report.read')" class="feature-card report-card" @click="goLaporan">
+            <div v-if="can('master.read') || can('report.read')" class="feature-card report-card" @click="goLaporan">
                 <div class="feature-icon">📊</div>
                 <div class="feature-text">
                     <span class="feature-title">Laporan</span>

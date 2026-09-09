@@ -88,8 +88,12 @@ const navItems = computed(() => {
     if (can('test.read') || can('test.create')) {
         items.push({ label: 'Pengujian', icon: 'format-list-checkbox', name: 'tests.index' });
     }
-    if (can('report.read')) {
-        items.push({ label: 'Laporan', icon: 'view', name: 'reports.index' });
+    if (can('master.read') || can('report.read')) {
+        items.push({
+            label: 'Laporan',
+            icon: 'view',
+            name: can('report.read') ? 'reports.index' : 'laporan.index',
+        });
     }
     return items;
 });
@@ -115,6 +119,7 @@ const onTabChange = (active: string | number) => {
         dashboard: 'dashboard',
         'tests.index': 'tests.index',
         'reports.index': 'reports.index',
+        'laporan.index': 'laporan.index',
     };
     const target = targets[item.name];
     if (target && currentRoute.value !== target) {

@@ -77,5 +77,5 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index')
         ->middleware('permission:report.read');
     Route::get('/laporan', fn () => redirect()->route('laporan.matrix'))->name('laporan.index')
-        ->middleware('permission:report.read');
+        ->middleware('permission:master.read|report.read');
 });
