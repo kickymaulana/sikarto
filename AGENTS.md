@@ -58,6 +58,8 @@ SI KARTO — Sistem Kalibrasi Toleransi Operasional Alat Ukur Rutin Bulanan. PRD
 
 ## Testing
 - `php artisan test` — feature test business logic PASS/FAIL + permission di `tests/Feature/CalibrationTestTest.php`.
+- Test wajib memakai SQLite memory (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), bukan MariaDB database aplikasi. `tests/bootstrap.php` menghapus config cache dan memaksa environment test sebelum Laravel boot.
+- Jangan jalankan test dengan `DB_DATABASE=sikarto` atau konfigurasi produksi; `RefreshDatabase` dapat menghapus seluruh data user, role, dan permission pada database aktif.
 - **phpunit.xml override `APP_URL=http://localhost`** — jangan dihapus. `.env` pakai subfolder `/sikarto/public`; tanpa override ini `$this->post('/x')` di test jadi `http://localhost/sikarto/public/x` → 404.
 
 ## Gotchas

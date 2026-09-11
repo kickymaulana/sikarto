@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AcceptableLimit;
 use App\Models\Brand;
+use App\Models\CalibrationTest;
 use App\Models\Capacity;
 use App\Models\Department;
 use App\Models\Factory;
@@ -131,6 +132,60 @@ class MatrixTest extends TestCase
             ->where('rows.2.code', 'W.FL.3')
             ->where('rows.3.code', 'W.FL.10')
             ->where('rows.4.code', 'W.FL.20')
+        );
+    }
+
+    public function test_matrix_shows_next_date_in_following_month_only(): void
+    {
+        $user = $this->makeUserWithRole('inspector');
+        $timbangan = InstrumentType::create(['name' => 'Timbangan Digital']);
+        $instrument = $this->makeInstrument([
+            'code' => 'W.FL.28',
+            'name' => 'Alat 28',
+            'instrument_type_id' => $timbangan->id,
+        ]);
+
+        CalibrationTest::create([
+            'instrument_id' => $instrument->id,
+            'test_date' => '2026-01-28',
+            'next_test_date' => '2026-02-28',
+            'tester_id' => $user->id,
+            'status' => 'OK',
+        ]);
+
+        $response = $this->actingAs($user)->get('/laporan/matrix?type_id='.$timbangan->id.'&year=2026');
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('rows.0.test_cell.1.day', '28')
+            ->where('rows.0.next_cell.2.day', '28')
+            ->where('rows.0.next_cell.3.day', '')
+        );
+    }
+
+    public function test_matrix_shows_next_date_in_next_year(): void
+    {
+        $user = $this->makeUserWithRole('inspector');
+        $timbangan = InstrumentType::create(['name' => 'Timbangan Digital']);
+        $instrument = $this->makeInstrument([
+            'code' => 'W.FL.12',
+            'name' => 'Alat 12',
+            'instrument_type_id' => $timbangan->id,
+        ]);
+
+        CalibrationTest::create([
+            'instrument_id' => $instrument->id,
+            'test_date' => '2026-12-28',
+            'next_test_date' => '2027-01-28',
+            'tester_id' => $user->id,
+            'status' => 'OK',
+        ]);
+
+        $response = $this->actingAs($user)->get('/laporan/matrix?type_id='.$timbangan->id.'&year=2027');
+
+        $response->assertInertia(fn ($page) => $page
+            ->where('rows.0.test_cell.12.day', '')
+            ->where('rows.0.next_cell.1.day', '28')
+            ->where('rows.0.next_cell.2.day', '')
         );
     }
 

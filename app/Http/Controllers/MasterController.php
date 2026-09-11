@@ -131,7 +131,10 @@ class MasterController extends Controller
         $typeId = $request->filled('type_id') ? (int) $request->type_id : ($defaultType?->id);
 
         $tests = CalibrationTest::with('instrument')
-            ->whereYear('test_date', $year)
+            ->where(function ($query) use ($year) {
+                $query->whereYear('test_date', $year)
+                    ->orWhereYear('next_test_date', $year);
+            })
             ->orderBy('test_date')
             ->get(['id', 'instrument_id', 'test_date', 'next_test_date', 'status']);
 
@@ -152,13 +155,16 @@ class MasterController extends Controller
                 $nextCell[$m] = ['day' => '', 'status' => 'none'];
             }
             foreach ($tests->where('instrument_id', $instrument->id) as $test) {
-                $testMonth = (int) $test->test_date->format('n');
-                $nextMonth = $test->next_test_date ? (int) $test->next_test_date->format('n') : null;
-                $testCell[$testMonth] = [
-                    'day' => (string) (int) $test->test_date->format('j'),
-                    'status' => $test->status,
-                ];
-                if ($nextMonth && $nextMonth !== $testMonth) {
+                if ($test->test_date->year === $year) {
+                    $testMonth = (int) $test->test_date->format('n');
+                    $testCell[$testMonth] = [
+                        'day' => (string) (int) $test->test_date->format('j'),
+                        'status' => $test->status,
+                    ];
+                }
+
+                if ($test->next_test_date?->year === $year) {
+                    $nextMonth = (int) $test->next_test_date->format('n');
                     $nextCell[$nextMonth] = [
                         'day' => (string) (int) $test->next_test_date->format('j'),
                         'status' => $test->status,
