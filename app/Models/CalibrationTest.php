@@ -8,6 +8,7 @@ class CalibrationTest extends Model
 {
     protected $fillable = [
         'instrument_id', 'test_date', 'next_test_date', 'tester_id', 'status', 'avg_correction', 'notes',
+        'computed_status', 'selected_status', 'min_correction_snapshot', 'max_correction_snapshot',
     ];
 
     protected function casts(): array
@@ -21,7 +22,7 @@ class CalibrationTest extends Model
 
     public function instrument()
     {
-        return $this->belongsTo(Instrument::class);
+        return $this->belongsTo(Instrument::class)->withTrashed();
     }
 
     public function tester()

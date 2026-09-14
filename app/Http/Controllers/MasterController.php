@@ -13,6 +13,8 @@ use App\Models\Instrument;
 use App\Models\InstrumentType;
 use App\Models\Specification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -277,7 +279,7 @@ class MasterController extends Controller
         $item = $config['model']::query();
 
         if ($entity === 'capacities') {
-            $item->with('standards');
+            $item->with('groups.standards');
         }
 
         $item = $item->findOrFail($id);
@@ -296,13 +298,14 @@ class MasterController extends Controller
         abort_unless(isset($this->entities[$entity]), 404);
 
         $config = $this->entities[$entity];
-        $data = $request->validate($config['rules']);
+        $data = $request->validate($config['rules'] + ($entity === 'capacities' ? $this->groupRules() : []));
 
-        $record = $config['model']::create($data);
-
-        if ($entity === 'capacities') {
-            $this->syncStandards($record, $request->input('standards'));
-        }
+        DB::transaction(function () use ($config, $data, $entity) {
+            $record = $config['model']::create(collect($data)->except('groups')->all());
+            if ($entity === 'capacities') {
+                $this->syncGroups($record, $data['groups']);
+            }
+        });
 
         return redirect()->route('masters.index', $entity)
             ->with('flash', ['success' => "{$config['label']} berhasil ditambahkan."]);
@@ -313,14 +316,15 @@ class MasterController extends Controller
         abort_unless(isset($this->entities[$entity]), 404);
 
         $config = $this->entities[$entity];
-        $data = $request->validate($config['rules']);
+        $data = $request->validate($config['rules'] + ($entity === 'capacities' ? $this->groupRules() : []));
 
-        $record = $config['model']::findOrFail($id);
-        $record->update($data);
-
-        if ($entity === 'capacities') {
-            $this->syncStandards($record, $request->input('standards'));
-        }
+        DB::transaction(function () use ($config, $data, $entity, $id) {
+            $record = $config['model']::lockForUpdate()->findOrFail($id);
+            $record->update(collect($data)->except('groups')->all());
+            if ($entity === 'capacities') {
+                $this->syncGroups($record, $data['groups']);
+            }
+        });
 
         return redirect()->route('masters.index', $entity)
             ->with('flash', ['success' => "{$config['label']} berhasil diperbarui."]);
@@ -337,20 +341,45 @@ class MasterController extends Controller
             ->with('flash', ['success' => "{$config['label']} berhasil dihapus."]);
     }
 
-    private function syncStandards($capacity, $standards): void
+    private function groupRules(): array
     {
-        $capacity->standards()->delete();
+        return [
+            'groups' => 'present|array',
+            'groups.*.id' => 'sometimes|required|integer|distinct',
+            'groups.*.name' => 'required|string|max:255',
+            'groups.*.reference_media' => 'required|string|max:255',
+            'groups.*.standards' => 'required|array|min:1',
+            'groups.*.standards.*.id' => 'sometimes|required|integer|distinct',
+            'groups.*.standards.*.standard_value' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+        ];
+    }
 
-        $values = collect($standards ?? [])
-            ->filter(fn ($v) => $v !== null && $v !== '')
-            ->values();
-
-        foreach ($values as $i => $value) {
-            $capacity->standards()->create([
-                'standard_value' => $value,
-                'sort_order' => $i,
-            ]);
+    private function syncGroups(Capacity $capacity, array $groups): void
+    {
+        $keptGroups = [];
+        foreach (array_values($groups) as $groupOrder => $data) {
+            $group = isset($data['id']) ? $capacity->groups()->find($data['id']) : $capacity->groups()->make();
+            if (! $group) {
+                throw ValidationException::withMessages(["groups.$groupOrder.id" => 'Grup bukan milik kapasitas ini.']);
+            }
+            $group->fill([
+                'name' => $data['name'],
+                'reference_media' => $data['reference_media'],
+                'sort_order' => $groupOrder,
+            ])->save();
+            $keptGroups[] = $group->id;
+            $keptStandards = [];
+            foreach (array_values($data['standards']) as $pointOrder => $point) {
+                $standard = isset($point['id']) ? $group->standards()->find($point['id']) : $group->standards()->make();
+                if (! $standard) {
+                    throw ValidationException::withMessages(["groups.$groupOrder.standards.$pointOrder.id" => 'Titik uji bukan milik grup ini.']);
+                }
+                $standard->fill(['standard_value' => $point['standard_value'], 'sort_order' => $pointOrder])->save();
+                $keptStandards[] = $standard->id;
+            }
+            $group->standards()->whereNotIn('id', $keptStandards)->delete();
         }
+        $capacity->groups()->whereNotIn('id', $keptGroups)->delete();
     }
 
     private function counts(): array

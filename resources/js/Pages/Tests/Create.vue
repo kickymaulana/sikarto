@@ -7,345 +7,188 @@ import AppLayout from '../../Layouts/AppLayout.vue';
 
 defineOptions({ layout: AppLayout });
 
-const props = defineProps<{
-    instruments: Array<{
-        id: number;
-        code: string;
-        factory: { name: string };
-        department: { name: string };
-        type: {
-            name: string;
-        };
-        brand: { name: string };
-        capacity: {
-            name: string;
-            standards: Array<{ standard_value: number }>;
-        };
-        specification: { name: string } | null;
-        acceptable_limit: { name: string; min_correction: number; max_correction: number; unit: string };
-    }>;
-}>();
-
-const manualStatuses = ['SPARE', 'NA', 'SERVICE'];
-
-const selected = ref<any>(null);
-const items = ref<Array<{ standard_value: number; reading_value: string; correction: number; within: boolean }>>([]);
-const form = reactive({
-    instrument_id: '',
-    test_date: new Date().toISOString().slice(0, 10),
-    status: '',
-    notes: '',
-});
+type Decimal = number | string;
+type Instrument = {
+    id: number;
+    code: string;
+    factory: { name: string } | null;
+    department: { name: string } | null;
+    type: { name: string } | null;
+    brand: { name: string } | null;
+    specification: { name: string } | null;
+    capacity: { name: string; groups: Array<{ id: number; name: string; reference_media: string; standards: Array<{ id: number; standard_value: Decimal }> }> } | null;
+    acceptable_limit: { name: string; min_correction: Decimal; max_correction: Decimal; unit: string } | null;
+};
+type Point = { standard_template_id: number; standard_value: Decimal; reading_value: string; index: number };
+type Group = { id: number; name: string; reference_media: string; open: boolean; points: Point[] };
+const props = defineProps<{ instruments: Instrument[] }>();
+const selected = ref<Instrument | null>(null);
+const groups = ref<Group[]>([]);
+const today = new Date();
+const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+const form = reactive({ instrument_id: '' as number | string, test_date: localToday, status: '', notes: '' });
 const saving = ref(false);
-
-const instrumentOptions = props.instruments.map((i) => ({ label: i.code, value: i.id }));
-
-const computedStatus = computed(() => {
-    if (items.value.length === 0) return '';
-    const avg = avgCorrection.value;
-    if (avg === null) return '';
+const errors = ref<Record<string, string>>({});
+const instrumentOptions = props.instruments.map((instrument) => ({ label: instrument.code, value: instrument.id }));
+const items = computed(() => groups.value.flatMap((group) => group.points));
+const isManual = computed(() => ['SPARE', 'NA', 'SERVICE'].includes(form.status));
+const unit = computed(() => selected.value?.acceptable_limit?.unit ?? '');
+const scaled = (value: Decimal): number | null => {
+    const text = String(value).trim();
+    if (!/^[+-]?(?:\d+(?:\.\d{1,4})?|\.\d{1,4})$/.test(text) || Math.abs(Number(text)) > 99999999.9999) return null;
+    const [whole, fraction = ''] = text.replace(/^[+-]/, '').split('.');
+    return (text.startsWith('-') ? -1 : 1) * (Number(whole) * 10000 + Number(fraction.padEnd(4, '0')));
+};
+const correction = (point: Point): number | null => {
+    const reading = scaled(point.reading_value);
+    const standard = scaled(point.standard_value);
+    if (reading === null || standard === null) return null;
+    const difference = reading - standard;
+    return Math.abs(difference) <= 999999999999 ? difference : null;
+};
+const mean = (points: Point[]): number | null => {
+    const values = points.map(correction).filter((value): value is number => value !== null);
+    if (!values.length) return null;
+    const sum = values.reduce((total, value) => total + BigInt(value), 0n);
+    const count = BigInt(values.length);
+    const absolute = sum < 0n ? -sum : sum;
+    const rounded = absolute / count + ((absolute % count) * 2n >= count ? 1n : 0n);
+    return Number(sum < 0n ? -rounded : rounded) / 10000;
+};
+const progress = (group: Group) => group.points.filter((point) => correction(point) !== null).length;
+const allFilled = computed(() => groups.value.length > 0 && groups.value.every((group) => group.points.length > 0 && progress(group) === group.points.length));
+const avgCorrection = computed(() => allFilled.value ? mean(items.value) : null);
+const limitValid = computed(() => {
     const limit = selected.value?.acceptable_limit;
-    if (!limit) return '';
-    return avg >= limit.min_correction && avg <= limit.max_correction ? 'OK' : 'NG';
+    if (!limit?.unit) return false;
+    const min = scaled(limit.min_correction);
+    const max = scaled(limit.max_correction);
+    return min !== null && max !== null && min <= max;
 });
-
-const isManual = computed(() => manualStatuses.includes(form.status));
-
-const finalStatus = computed(() => {
-    if (isManual.value) return form.status;
-    return computedStatus.value || form.status || '';
+const computedStatus = computed(() => {
+    const limit = selected.value?.acceptable_limit;
+    if (isManual.value || avgCorrection.value === null || !limit || !limitValid.value) return '';
+    return avgCorrection.value >= Number(limit.min_correction) && avgCorrection.value <= Number(limit.max_correction) ? 'OK' : 'NG';
 });
-
-const statusType = (s: string) => {
-    if (s === 'OK') return 'success';
-    if (s === 'NG') return 'danger';
-    if (s === 'SPARE') return 'info';
-    if (s === 'SERVICE') return 'warning';
-    return 'default';
-};
-
-const alertType = (s: string) => {
-    if (s === 'OK') return 'success';
-    if (s === 'NG') return 'danger';
-    if (s === 'SPARE') return 'info';
-    if (s === 'SERVICE') return 'warning';
-    return 'info';
-};
-
-const selectInstrument = (id: number) => {
-    const instrument = props.instruments.find((i) => i.id === id);
-    selected.value = instrument;
-    form.instrument_id = String(id);
+const finalStatus = computed(() => form.status || computedStatus.value);
+const canSubmit = computed(() => !!selected.value && !!form.test_date && form.test_date <= localToday && (isManual.value || (allFilled.value && limitValid.value)));
+const pointErrors = (point: Point) => Object.entries(errors.value).filter(([key]) => key === `items.${point.index}` || key.startsWith(`items.${point.index}.`));
+const selectInstrument = (id: unknown) => {
+    selected.value = props.instruments.find((instrument) => instrument.id === Number(id)) ?? null;
+    form.instrument_id = selected.value?.id ?? '';
     form.status = '';
-    items.value = (instrument?.capacity.standards ?? []).map((s) => ({
-        standard_value: s.standard_value,
-        reading_value: '',
-        correction: 0,
-        within: true,
+    errors.value = {};
+    let index = 0;
+    groups.value = (selected.value?.capacity?.groups ?? []).map((group, groupIndex) => ({
+        id: group.id,
+        name: group.name,
+        reference_media: group.reference_media,
+        open: groupIndex === 0,
+        points: group.standards.map((point) => ({ standard_template_id: point.id, standard_value: point.standard_value, reading_value: '', index: index++ })),
     }));
 };
-
-const computeRow = (idx: number) => {
-    const row = items.value[idx];
-    const reading = parseFloat(row.reading_value);
-    if (isNaN(reading)) {
-        row.correction = 0;
-        row.within = true;
-        return;
-    }
-    const limit = selected.value?.acceptable_limit;
-    row.correction = Math.round((reading - row.standard_value) * 10000) / 10000;
-    row.within = !!limit && row.correction >= limit.min_correction && row.correction <= limit.max_correction;
-};
-
-const avgCorrection = computed<number | null>(() => {
-    const filled = items.value.filter((i) => !isNaN(parseFloat(i.reading_value)));
-    if (filled.length === 0) return null;
-    const sum = filled.reduce((acc, i) => acc + i.correction, 0);
-    return Math.round((sum / filled.length) * 10000) / 10000;
-});
-
-const allFilled = computed(() =>
-    items.value.every((i) => i.reading_value !== '' && !isNaN(parseFloat(i.reading_value)))
-);
-
-const canSubmit = computed(() => {
-    if (!selected.value) return false;
-    if (isManual.value) return true;
-    return allFilled.value;
-});
-
 const submit = () => {
-    if (!selected.value || !canSubmit.value) return;
+    if (!canSubmit.value || saving.value) return;
     saving.value = true;
-    const payload: Record<string, any> = {
+    errors.value = {};
+    const payload = {
         instrument_id: form.instrument_id,
         test_date: form.test_date,
         notes: form.notes,
+        ...(form.status ? { status: form.status } : {}),
+        ...(!isManual.value ? { items: items.value.map((point) => ({ standard_template_id: point.standard_template_id, reading_value: point.reading_value.trim() })) } : {}),
     };
-    if (form.status) payload.status = form.status;
-    if (!isManual.value && allFilled.value) {
-        payload.items = items.value.map((i) => ({
-            standard_value: i.standard_value,
-            reading_value: parseFloat(i.reading_value),
-        }));
-    }
     router.post(route('tests.store'), payload, {
-        onSuccess: () => { saving.value = false; },
-        onError: () => { saving.value = false; Snackbar.error('Gagal menyimpan pengujian.'); },
+        onError: (messages) => {
+            errors.value = messages;
+            groups.value.forEach((group) => {
+                if (messages.items || group.points.some((point) => pointErrors(point).length)) group.open = true;
+            });
+            Snackbar.error('Gagal menyimpan pengujian. Periksa input.');
+        },
+        onFinish: () => { saving.value = false; },
     });
 };
+if (import.meta.env.DEV) {
+    const point = (reading_value: string): Point => ({ standard_template_id: 1, standard_value: '0', reading_value, index: 0 });
+    console.assert(scaled('0') === 0 && scaled('') === null && scaled('1.00001') === null && scaled('100000000') === null, 'Decimal validation');
+    console.assert(mean([point('-0.0001'), point('0')]) === -0.0001 && mean([point('0.0001'), point('0')]) === 0.0001, 'Half-away-from-zero rounding');
+    console.assert(mean([point('0'), point('0'), point('3')]) === 1, 'Point-weighted mean');
+}
 </script>
 
 <template>
-    <var-steps
-        :active="selected ? 1 : 0"
-        active-color="#fb8c00"
-        class="steps-bar"
-    >
-        <var-step>Pilih Alat Ukur</var-step>
-        <var-step>Input Penunjukan</var-step>
-    </var-steps>
-
     <div class="white-card">
         <h3 class="card-title">1. Pilih Alat Ukur</h3>
-        <var-select
-            v-model="form.instrument_id"
-            placeholder="Kode Alat"
-            :options="instrumentOptions"
-            filterable
-            clearable
-            @change="selectInstrument"
-        />
+        <var-select v-model="form.instrument_id" placeholder="Kode Alat" :options="instrumentOptions" filterable clearable :disabled="saving" @change="selectInstrument" />
     </div>
-
-            <div v-if="selected" class="info-card">
-                <h3 class="selected-code">🔧 {{ selected.code }}</h3>
-                <div class="info-row"><span class="info-label">Factory</span><span>{{ selected.factory.name }}</span></div>
-                <div class="info-row"><span class="info-label">Departemen</span><span>{{ selected.department.name }}</span></div>
-                <div class="info-row"><span class="info-label">Jenis</span><span>{{ selected.type.name }}</span></div>
-                <div class="info-row"><span class="info-label">Merk</span><span>{{ selected.brand.name }}</span></div>
-                <div class="info-row"><span class="info-label">Kapasitas</span><span>{{ selected.capacity.name }}</span></div>
-                <div class="info-row"><span class="info-label">Toleransi</span><span>{{ selected.acceptable_limit.name }}</span></div>
-                <div class="info-row"><span class="info-label">Spesifikasi</span><span>{{ selected.specification?.name ?? '—' }}</span></div>
-            </div>
-
-            <div v-if="selected" class="white-card">
-                <h3 class="card-title">2. Input Penunjukan</h3>
-                <div class="date-row">
-                    <label class="date-label">Tanggal Uji</label>
-                    <input v-model="form.test_date" type="date" class="date-input" />
-                </div>
-
-                <div class="field-block status-block">
-                    <label class="field-label">Status (opsional — otomatis OK/NG dari perhitungan, bisa diganti)</label>
-                    <var-select
-                        v-model="form.status"
-                        placeholder="Otomatis"
-                        :options="['OK', 'NG', 'SPARE', 'NA', 'SERVICE'].map((s) => ({ label: s, value: s }))"
-                    />
-                </div>
-
-                <div v-if="!isManual" class="items-list">
-                    <div v-for="(row, idx) in items" :key="idx" class="item-row">
-                        <div class="item-left">
-                            <span class="item-standar">{{ row.standard_value }}</span>
-                            <span class="item-limit">
-                                {{ selected.acceptable_limit.min_correction }} s/d {{ selected.acceptable_limit.max_correction }}
-                            </span>
+    <div v-if="Object.keys(errors).length" role="alert" class="white-card error-list">
+        <p v-for="(message, key) in errors" :key="key">{{ message }}</p>
+    </div>
+    <div v-if="selected" class="info-card">
+        <h3 class="selected-code">{{ selected.code }}</h3>
+        <div class="info-row"><span>Factory / Departemen</span><span>{{ selected.factory?.name ?? '—' }} / {{ selected.department?.name ?? '—' }}</span></div>
+        <div class="info-row"><span>Jenis / Merk</span><span>{{ selected.type?.name ?? '—' }} / {{ selected.brand?.name ?? '—' }}</span></div>
+        <div class="info-row"><span>Kapasitas</span><span>{{ selected.capacity?.name ?? '—' }}</span></div>
+        <div class="info-row"><span>Spesifikasi</span><span>{{ selected.specification?.name ?? '—' }}</span></div>
+        <div class="info-row"><span>Toleransi</span><span v-if="selected.acceptable_limit">{{ selected.acceptable_limit.min_correction }} s/d {{ selected.acceptable_limit.max_correction }} {{ unit }}</span><span v-else>—</span></div>
+    </div>
+    <div v-if="selected" class="white-card">
+        <h3 class="card-title">2. Input Penunjukan</h3>
+        <label for="test-date">Tanggal Uji</label>
+        <input id="test-date" v-model="form.test_date" type="date" :max="localToday" :disabled="saving" />
+        <div class="field-block">
+            <label class="field-label">Status pilihan (menggantikan otomatis)</label>
+            <var-select v-model="form.status" placeholder="Otomatis" :disabled="saving" :options="[{ label: 'Otomatis', value: '' }, ...['OK', 'NG', 'SPARE', 'NA', 'SERVICE'].map((status) => ({ label: status, value: status }))]" />
+        </div>
+        <var-alert v-if="isManual" type="info">Status {{ form.status }} mengabaikan pengukuran. Input tetap tersimpan sementara di halaman ini, tetapi tidak dikirim atau disimpan sebagai hasil uji.</var-alert>
+        <div v-show="!isManual" class="items-list">
+            <p v-if="!groups.length">Kapasitas belum memiliki grup titik uji. Lengkapi master kapasitas atau pilih SPARE/NA/SERVICE.</p>
+            <details v-for="group in groups" :key="group.id" :open="group.open" class="group-card" @toggle="group.open = ($event.target as HTMLDetailsElement).open">
+                <summary>{{ group.name }} · {{ progress(group) }}/{{ group.points.length }} titik valid</summary>
+                <div class="group-content">
+                    <p>Media referensi: {{ group.reference_media }}</p>
+                    <p>Rata-rata Koreksi Sementara: {{ mean(group.points) ?? '—' }} {{ unit }}</p>
+                    <p v-if="!group.points.length" class="error-list">Grup belum memiliki titik uji.</p>
+                    <div v-for="point in group.points" :key="point.standard_template_id" class="item-row">
+                        <label :for="`reading-${point.standard_template_id}`">Penunjukan untuk standar {{ point.standard_value }} {{ unit }}</label>
+                        <input :id="`reading-${point.standard_template_id}`" v-model="point.reading_value" type="text" inputmode="decimal" :disabled="saving" :aria-invalid="!!pointErrors(point).length || (point.reading_value !== '' && correction(point) === null)" :aria-describedby="`reading-error-${point.standard_template_id}`" />
+                        <span>Koreksi: {{ correction(point) === null ? '—' : correction(point)! / 10000 }} {{ unit }}</span>
+                        <div :id="`reading-error-${point.standard_template_id}`" class="error-list" aria-live="polite">
+                            <p v-if="point.reading_value !== '' && scaled(point.reading_value) === null">Isi angka maksimal 4 desimal, rentang ±99999999.9999.</p>
+                            <p v-else-if="point.reading_value !== '' && correction(point) === null">Standar tidak valid atau koreksi di luar rentang ±99999999.9999.</p>
+                            <p v-for="([key, message]) in pointErrors(point)" :key="key">{{ message }}</p>
                         </div>
-                        <var-input
-                            v-model="row.reading_value"
-                            type="number"
-                            size="small"
-                            placeholder="Penunjukan"
-                            class="item-input"
-                            @change="computeRow(idx)"
-                        />
-                        <span class="item-corr">{{ row.correction }}</span>
-                        <var-chip
-                            :type="row.within ? 'success' : 'danger'"
-                            size="mini"
-                        >
-                            {{ row.within ? 'OK' : 'NOK' }}
-                        </var-chip>
                     </div>
                 </div>
-
-                <var-input v-model="form.notes" placeholder="Catatan (opsional)" :textarea="true" />
-
-                <var-alert v-if="!isManual && !allFilled" type="warning">Semua penunjukan harus diisi (atau pilih status SPARE/NA/SERVICE).</var-alert>
-                <var-alert v-if="!isManual && allFilled && avgCorrection !== null" type="info">
-                    Rata-rata Koreksi: {{ avgCorrection }}
-                    (limit {{ selected.acceptable_limit.min_correction }} s/d {{ selected.acceptable_limit.max_correction }})
-                </var-alert>
-                <var-alert v-if="finalStatus" :type="alertType(finalStatus)">
-                    Status Alat: {{ finalStatus }}
-                    <template v-if="!isManual && finalStatus === 'NG'"> — rata-rata koreksi melewati toleransi. Pengujian tetap tersimpan.</template>
-                    <template v-if="isManual"> — status dipilih manual.</template>
-                </var-alert>
-
-                <var-button type="primary" block class="submit-btn" :loading="saving" :disabled="!canSubmit" @click="submit">
-                    Simpan Pengujian
-                </var-button>
-            </div>
+            </details>
+            <var-alert v-if="!allFilled" type="warning">Semua titik uji wajib diisi angka valid, termasuk nol. Status pilihan OK/NG tetap memerlukan semua titik.</var-alert>
+            <var-alert v-if="!limitValid" type="warning">Batas toleransi atau satuan tidak valid. Perbaiki master alat.</var-alert>
+        </div>
+        <var-input v-model="form.notes" placeholder="Catatan (opsional)" :textarea="true" :disabled="saving" />
+        <div class="result" aria-live="polite">
+            <p>Rata-rata Koreksi Global: {{ isManual ? '—' : avgCorrection ?? '—' }} {{ isManual ? '' : unit }}</p>
+            <p>Otomatis: {{ computedStatus || (isManual ? 'Tidak dihitung' : 'Menunggu semua titik valid') }}</p>
+            <p>Pilihan: {{ form.status || 'Tidak dipilih' }}</p>
+            <strong>Status efektif: {{ finalStatus || '—' }}</strong>
+        </div>
+        <var-button type="primary" block class="submit-btn" :loading="saving" :disabled="!canSubmit || saving" @click="submit">Simpan Pengujian</var-button>
+    </div>
 </template>
 
 <style scoped>
-.steps-bar {
-    margin-bottom: 12px;
-}
-
-.card-title {
-    margin: 0 0 12px;
-    font-size: 14px;
-    color: #0f172a;
-}
-
-.info-card {
-    background: #fff3e0;
-    border-radius: 16px;
-    padding: 14px 16px;
-    border: 1px solid #ffe0b2;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    font-size: 13px;
-    color: #0f172a;
-}
-
-.selected-code {
-    margin: 0 0 8px;
-    font-size: 16px;
-    font-weight: 800;
-    color: #f57c00;
-}
-
-.info-label {
-    color: #92400e;
-    font-weight: 600;
-}
-
-.date-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-.date-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #0f172a;
-}
-
-.date-input {
-    flex: 1;
-    padding: 10px 12px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    font-size: 14px;
-    background: #fdf0ea;
-    color: #0f172a;
-}
-
-.items-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 14px;
-}
-
-.item-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #f8fafc;
-    border-radius: 12px;
-    padding: 10px 12px;
-    border: 1px solid #f1f5f9;
-}
-
-.item-left {
-    display: flex;
-    flex-direction: column;
-    width: 90px;
-    flex-shrink: 0;
-}
-
-.item-standar {
-    font-family: monospace;
-    font-weight: 700;
-    font-size: 14px;
-    color: #0f172a;
-}
-
-.item-limit {
-    font-size: 10px;
-    color: #64748b;
-}
-
-.item-input {
-    flex: 1;
-}
-
-.item-corr {
-    width: 56px;
-    text-align: right;
-    font-family: monospace;
-    font-size: 13px;
-    font-weight: 600;
-    color: #0f172a;
-}
-
-.submit-btn {
-    margin-top: 12px;
-    background: linear-gradient(135deg, #fb8c00, #f57c00);
-    border-radius: 100px;
-    font-weight: 700;
-    box-shadow: 0 4px 15px rgba(251, 140, 0, 0.3);
-}
+.card-title { margin: 0 0 12px; font-size: 14px; color: #0f172a; }
+.info-card { background: #fdf0ea; border-radius: 16px; padding: 14px 16px; border: 1px solid #ffe0b2; }
+.info-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 13px; }
+.selected-code { margin: 0 0 8px; font-size: 16px; color: #f57c00; }
+.group-card { border: 1px solid #f1f5f9; border-radius: 16px; background: white; margin: 12px 0; overflow: hidden; }
+summary { padding: 14px; background: #fdf0ea; color: #9a4d00; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+summary:focus-visible, input:focus-visible { outline: 2px solid #fb8c00; outline-offset: -2px; }
+.group-content { padding: 12px; }
+.item-row { display: grid; gap: 8px; background: #f8fafc; border-radius: 12px; padding: 12px; margin-top: 10px; }
+input { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font: inherit; background: #fdf0ea; color: #0f172a; }
+.error-list { color: #b91c1c; font-size: 13px; }
+.error-list p { margin: 4px 0; }
+.result { margin: 12px 0; }
+.submit-btn { margin-top: 12px; background: linear-gradient(135deg, #fb8c00, #f57c00); border-radius: 100px; font-weight: 700; }
 </style>

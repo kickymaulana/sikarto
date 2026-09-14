@@ -13,7 +13,7 @@ Proses pengecekan dan kalibrasi rutin bulanan alat ukur di pabrik saat ini masih
 ### 1.2 Tujuan
 1. Digitalisasi paperless proses pengecekan/kalibrasi alat ukur bulanan.
 2. Memastikan seluruh alat ukur di semua departemen dan pabrik teruji tepat waktu (scheduling otomatis).
-3. Otomatisasi perhitungan koreksi dan penentuan status kelayakan alat (PASS/FAIL) berdasarkan acceptable limit.
+3. Otomatisasi perhitungan koreksi dan penentuan status kelayakan alat (OK/NG) berdasarkan acceptable limit.
 4. Menyediakan rekapitulasi data untuk audit ISO/internal (export Excel/PDF).
 
 ### 1.3 Scope
@@ -27,8 +27,10 @@ Proses pengecekan dan kalibrasi rutin bulanan alat ukur di pabrik saat ini masih
 | Standar | Nilai acuan dari template pengujian (contoh: 500 gr) |
 | Correction | Penunjukan − Standar |
 | Acceptable Limit | Batas toleransi koreksi (±5 gr) |
-| PASS / OK | Semua titik koreksi dalam batas toleransi |
-| REJECT / NOT OK | Minimal 1 titik koreksi melewati toleransi |
+| OK otomatis | Rata-rata koreksi seluruh titik dalam toleransi inklusif |
+| NG otomatis | Rata-rata koreksi seluruh titik di luar toleransi |
+| Status efektif | Status pilihan jika ada; selain itu status otomatis |
+| Grup titik uji | Kumpulan titik per kapasitas dengan nama, media referensi, dan urutan |
 
 ---
 
@@ -108,21 +110,28 @@ instruments (id, code [unique], factory_id, department_id, instrument_type_id,
             is_active, notes)
   └─ contoh code: W.FL.5
 
-standard_templates (id, capacity_id, standard_value, sort_order)
-  └─ titik pengujian standar PER KAPASITAS (3 KG → 500, 700, 800, 1000)
+standard_groups (id, capacity_id → capacities, name, reference_media, sort_order)
+  └─ grup pengujian PER KAPASITAS, bukan per jenis alat
+
+standard_templates (id, standard_group_id → standard_groups, standard_value, sort_order)
+  └─ titik standar per grup; urutan grup/titik berdasarkan sort_order, lalu id
 
 calibration_tests (id, instrument_id, test_date, next_test_date,
-                   tester_id → users, status [PASS|FAIL], notes)
+                   tester_id → users, status [OK|NG|SPARE|NA|SERVICE],
+                   computed_status*, selected_status*, avg_correction*,
+                   min_correction_snapshot*, max_correction_snapshot*, notes)
 
 calibration_test_items (id, calibration_test_id, standard_value,
-                        reading_value, correction, is_within_limit)
+                        reading_value, correction, is_within_limit,
+                        group_order*, group_name*, reference_media*, unit*, point_order*)
+  └─ * nullable; metadata histori lama tidak direkonstruksi dari master
 ```
 
 ### 3.2 Aturan Data
 - `instruments.code` UNIQUE — kode alat (contoh `W.FL.5`), validasi duplikat.
-- `acceptable_limits` pakai `min_correction`/`max_correction` numerik + `unit` (bukan string "±5 gr" mentah) agar validasi PASS/FAIL bisa dihitung mesin.
-- `standard_templates` per **kapasitas** — titik uji diatur di form Kapasitas (tambah/hapus standar), bukan per jenis alat.
-- Unit konsisten dalam satu alat: kapasitas & toleransi memakai unit sama (gr untuk berat, mm untuk panjang).
+- `acceptable_limits` pakai `min_correction`/`max_correction` numerik + `unit` (bukan string "±5 gr" mentah) agar validasi OK/NG bisa dihitung mesin.
+- Form Kapasitas mengelola `groups`: nama, media referensi, dan titik standar. Kapasitas boleh tanpa grup; setiap grup wajib minimal satu titik. ID existing dipertahankan, ownership diverifikasi, tambah/ubah/hapus dilakukan atomik. Urutan mengikuti posisi array.
+- Semua standar, penunjukan, koreksi dan toleransi satu alat memakai satuan toleransi. Unit kapasitas boleh berbeda (misalnya kapasitas kg, titik/toleransi gr); tidak ada konversi unit otomatis.
 - Semua tabel master + `instruments` soft delete.
 - `calibration_tests` & items immutable setelah disimpan (revisi hanya oleh pemegang hak + tercatat audit).
 
@@ -143,7 +152,7 @@ calibration_test_items (id, calibration_test_id, standard_value,
 ## 4. Functional Requirements & User Flow
 
 ### FR-1 Dashboard & Scheduling
-- **FR-1.1** Statistik ringkas: total alat, alat perlu uji bulan ini, alat terlambat (overdue), rasio PASS/FAIL bulan berjalan.
+- **FR-1.1** Statistik ringkas: total alat, alat perlu uji bulan ini, alat terlambat (overdue), rasio OK/NG bulan berjalan.
 - **FR-1.2** Matriks/kalender status uji per alat per bulan (Jan–Des) — sekarang adalah **halaman sendiri di `/masters/matrix`** (bukan section di dashboard). Warna status: hijau=OK, merah=NG, biru=SPARE, abu-abu=NA, oranye=SERVICE, putih=belum ada uji. Tiap bulan punya 2 kolom (Uji = test_date, Next = next_test_date) berisi tanggal saja (misal `21`) atau `—`. Kolom info instrumen (Kode Alat, Merk, Kapasitas, Lokasi) sticky kiri.
 - **FR-1.3** Daftar alat yang jatuh tempo bulan ini (berdasarkan `next_test_date`), satu klik → langsung ke form entry.
 - **FR-1.4** Filter dashboard per factory & departemen.
@@ -152,12 +161,12 @@ calibration_test_items (id, calibration_test_id, standard_value,
 
 ### FR-2 Form Entry Pengujian (mobile/web friendly)
 - **FR-2.1** Input/pilih `Kode Alat` → sistem auto-fill: Factory, Departemen, Jenis, Merk, Kapasitas, Toleransi.
-- **FR-2.2** Tabel titik uji otomatis dari `standard_templates` **kapasitas** alat (contoh: 3 KG → 500 gr, 700 gr, 800 gr). Jumlah titik bervariasi per kapasitas (bisa 3, 5, dst.).
-- **FR-2.3** QC input kolom **Penunjukan** per baris.
-- **FR-2.4** Perhitungan real-time: `Correction = Penunjukan − Standar`, kolom status tiap baris (OK/NOK), total status alat (PASS/FAIL).
-- **FR-2.5** Save → simpan test + items → `next_test_date = test_date + 1 bulan` (auto).
-- **FR-2.6** Validasi sebelum simpan: semua baris terisi; konfirmasi bila status FAIL.
-- **FR-2.7** Riwayat pengujian per alat (list + detail + status tiap titik).
+- **FR-2.2** Grup dari `instrument.capacity.groups.standards`, accordion berisi nama, media referensi, progres dan titik standar. Ganti alat mereset input/status; urutan mengikuti master.
+- **FR-2.3** QC input **Penunjukan** per titik. Nol valid; kosong bukan nol.
+- **FR-2.4** Koreksi real-time dan rata-rata sementara per grup (titik valid saja). Rata-rata global hanya tersedia setelah seluruh titik valid; dihitung dari seluruh titik, bukan rata-rata antargrup.
+- **FR-2.5** Save atomik: test + items snapshot, `next_test_date = test_date + 1 bulan` untuk semua status.
+- **FR-2.6** Otomatis/OK/NG wajib seluruh titik tepat satu kali dan toleransi valid. Pilihan status menggantikan otomatis; SPARE/NA/SERVICE mengabaikan items tanpa validasi pengukuran atau penyimpanan items. Tidak ada konfirmasi NG tambahan.
+- **FR-2.7** Detail menampilkan status otomatis/pilihan/efektif, toleransi snapshot, grup dan rata-rata grup dari koreksi snapshot. Histori lama ditandai metadata tidak tersedia; tidak memakai master terkini untuk rekonstruksi.
 
 **Flow:**
 1. Pilih/scan kode alat → autofill data alat.
@@ -187,16 +196,23 @@ calibration_test_items (id, calibration_test_id, standard_value,
 Correction = Penunjukan − Standar
 ```
 - `Penunjukan` = nilai input QC; `Standar` = nilai dari template.
-- Nilai numerik desimal; unit mengikuti kapasitas/toleransi alat.
+- Nilai numerik desimal; unit pengukuran mengikuti toleransi alat, tanpa konversi otomatis dari unit kapasitas.
 
-### 5.2 Aturan Pass/Fail
+### 5.2 Status, Rata-rata dan Snapshot
 ```
-Per baris:  is_within_limit = (min_correction ≤ correction ≤ max_correction)
-Status alat: PASS  jika SEMUA baris is_within_limit = true
-             FAIL  jika minimal 1 baris is_within_limit = false
+is_within_limit = (min_correction ≤ correction ≤ max_correction)
+avg_correction = round(sum(koreksi seluruh titik) / jumlah seluruh titik, 4)
+computed_status = OK jika min_correction ≤ avg_correction ≤ max_correction; selain itu NG
+status = selected_status ?? computed_status
 ```
-- Pengujian status FAIL tetap **tersimpan** (bukan ditolak) — riwayat wajib lengkap untuk audit.
-- Status dihitung otomatis saat input, dikunci saat save.
+- Pembulatan 4 desimal half-away-from-zero. Rata-rata global berbobot jumlah titik, BUKAN rata-rata dari rata-rata grup. Indikator tiap titik bukan penentu status global.
+- Pilihan OK/NG tetap menghitung dan menyimpan pengukuran lengkap, meskipun berbeda dari status otomatis. NG tetap tersimpan.
+- SPARE/NA/SERVICE bypass: items diabaikan walau invalid, tidak disimpan; `avg_correction` dan `computed_status` NULL. Min/max toleransi disalin jika tersedia; satuan snapshot berada pada items sehingga tidak tersedia pada bypass.
+- Server mengambil standar/toleransi dari master, menghitung ulang koreksi/status, lalu menyimpan test + items dalam satu transaksi.
+- Snapshot mencakup standar, penunjukan, koreksi, indikator titik, nama/urutan grup, media referensi, satuan toleransi, urutan titik, min/max toleransi, serta status otomatis/pilihan/efektif. Detail/rata-rata grup memakai snapshot; identitas alat tetap relasi hidup termasuk alat soft-deleted.
+- Migrasi memindahkan standar lama ke satu grup `Penimbangan` / `Anak Timbangan` per kapasitas tanpa mengubah ID/nilai/urutan titik. Nama/media alat non-timbangan perlu disesuaikan. Null/orphan `capacity_id` ditolak sebelum mutasi.
+- Histori lama mempertahankan hasil lama dan metadata snapshot baru NULL; tidak diisi dari master sekarang. Rollback menghapus metadata grup/snapshot, tidak lossless.
+- SQLite diverifikasi di memory. MySQL/MariaDB wajib staging, backup dan maintenance: DDL implicit commit bisa meninggalkan migrasi parsial. Foreign key grup dilepas sebelum perubahan nullability lalu dipasang kembali. Deployment pending: `php artisan migrate --force`; jangan jalankan pada DB aplikasi saat review.
 
 ### 5.3 Scheduling
 - `next_test_date = test_date + 1 bulan` (tanggal uji aktual, bukan bulan kalender).
@@ -207,7 +223,9 @@ Status alat: PASS  jika SEMUA baris is_within_limit = true
 | Aturan | Ketentuan |
 |---|---|
 | Kode Alat | Wajib, unik, format bebas (contoh W.FL.5) |
-| Penunjukan | Wajib numerik, wajib semua baris terisi sebelum save |
+| Penunjukan | Otomatis/OK/NG: seluruh titik kapasitas tepat satu kali, tanpa duplikat/titik asing/tambahan; nol valid, kosong invalid. SPARE/NA/SERVICE bypass pengukuran |
+| Angka pengukuran | Standar/penunjukan/toleransi maksimal 4 desimal, rentang ±99999999.9999; koreksi overflow ditolak |
+| Toleransi | Otomatis/OK/NG wajib min/max valid, min ≤ max, satuan tersedia |
 | Tanggal uji | Tidak boleh di masa depan; boleh backdate (uji susulan) |
 | Master referensi | Tidak bisa dihapus jika masih dipakai (foreign key) |
 | Dropdown | Nilai selalu dari master, tidak ada free-text |
@@ -229,7 +247,7 @@ Referensi desain: aplikasi **SUKIRMAN** (`D:\Apache24\htdocs\sukirman`). Adopsi 
 - Primary: **orange** `#FB8C00` (ORANGE_600) — app bar, tombol utama, ikon.
 - Accent fill: **peach** `#FDF0EA` — input & kartu.
 - Background: `#f8fafc`; kartu putih radius 16, border `#f1f5f9`, shadow halus.
-- Status chip semantic: hijau PASS, merah FAIL/NOK, kuning/amber overdue, `var-chip` round.
+- Status chip semantic: hijau OK, merah NG, kuning/amber overdue, `var-chip` round.
 - Font: **Inter** (`@fontsource/inter` 400–800), fallback Roboto.
 
 **Framework setup:**
@@ -306,7 +324,7 @@ Referensi desain: aplikasi **SUKIRMAN** (`D:\Apache24\htdocs\sukirman`). Adopsi 
 2. Migrasi & seeder seluruh master + roles/permissions + user admin awal.
 3. Halaman login + otorisasi role/permission.
 4. CRUD 7 master data.
-5. Form entry pengujian (autofill + hitung otomatis + PASS/FAIL + next date).
+5. Form entry pengujian (autofill + hitung otomatis + OK/NG + next date).
 6. Dashboard & matriks scheduling.
 
 #### 6.5.1 Matriks Uji Bulanan (`/masters/matrix`)

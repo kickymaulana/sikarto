@@ -25,11 +25,19 @@ props.config.fields.forEach((f) => {
 });
 
 const isCapacity = props.entity === 'capacities';
-const standards = ref<string[]>(
-    props.item?.standards?.length
-        ? props.item.standards.map((s: any) => String(s.standard_value ?? s))
-        : ['']
-);
+type Point = { id?: number; standard_value: string; key: number };
+type Group = { id?: number; name: string; reference_media: string; standards: Point[]; key: number; open: boolean };
+let nextKey = 0;
+const groups = ref<Group[]>((props.item?.groups ?? []).map((group: Group, index: number) => ({
+    id: group.id,
+    name: group.name,
+    reference_media: group.reference_media,
+    key: nextKey++,
+    open: index === 0,
+    standards: group.standards.map((point) => ({ id: point.id, standard_value: String(point.standard_value), key: nextKey++ })),
+})));
+const errors = ref<Record<string, string>>({});
+const groupErrors = (index: number) => Object.entries(errors.value).filter(([key]) => key === `groups.${index}` || key.startsWith(`groups.${index}.`));
 
 const isEditing = !!props.item;
 const saving = ref(false);
@@ -37,23 +45,66 @@ const saving = ref(false);
 const fieldOptions = (key: string) =>
     (props.options[key] ?? []).map((o) => ({ label: o.name ?? o.code, value: o.id }));
 
-const addStandard = () => { standards.value.push(''); };
-const removeStandard = (idx: number) => { standards.value.splice(idx, 1); };
+const addGroup = () => {
+    errors.value = {};
+    groups.value.push({ name: '', reference_media: '', key: nextKey++, open: true, standards: [{ standard_value: '', key: nextKey++ }] });
+};
+const removeGroup = (group: Group) => {
+    Dialog({
+        title: 'Hapus Grup',
+        message: `Hapus grup ${group.name || 'ini'} beserta semua titik uji?`,
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        onConfirm: () => {
+            groups.value = groups.value.filter((entry) => entry.key !== group.key);
+            errors.value = {};
+        },
+    });
+};
+const removePoint = (group: Group, index: number) => {
+    group.standards.splice(index, 1);
+    errors.value = {};
+};
 
 const submit = () => {
+    if (saving.value) return;
+    errors.value = {};
+    if (isCapacity) {
+        groups.value.forEach((group, index) => {
+            if (!group.name.trim()) errors.value[`groups.${index}.name`] = 'Nama grup wajib diisi.';
+            if (!group.reference_media.trim()) errors.value[`groups.${index}.reference_media`] = 'Media referensi wajib diisi.';
+            if (!group.standards.length) errors.value[`groups.${index}.standards`] = 'Minimal satu titik uji.';
+            group.standards.forEach((point, pointIndex) => {
+                const value = point.standard_value.trim();
+                if (!/^[+-]?(?:\d+(?:\.\d{1,4})?|\.\d{1,4})$/.test(value) || Math.abs(Number(value)) > 99999999.9999) {
+                    errors.value[`groups.${index}.standards.${pointIndex}.standard_value`] = 'Isi angka maksimal 4 desimal, rentang ±99999999.9999.';
+                }
+            });
+            if (groupErrors(index).length) group.open = true;
+        });
+        if (Object.keys(errors.value).length) return;
+    }
     saving.value = true;
     const payload: Record<string, any> = { ...form };
     if (isCapacity) {
-        payload.standards = standards.value
-            .map((s) => s.trim())
-            .filter((s) => s !== '');
+        payload.groups = groups.value.map((group) => ({
+            ...(group.id !== undefined ? { id: group.id } : {}),
+            name: group.name,
+            reference_media: group.reference_media,
+            standards: group.standards.map((point) => ({
+                ...(point.id !== undefined ? { id: point.id } : {}),
+                standard_value: point.standard_value.trim(),
+            })),
+        }));
     }
     const opts = {
         onSuccess: () => { saving.value = false; },
-        onError: () => {
-            saving.value = false;
+        onError: (messages: Record<string, string>) => {
+            errors.value = messages;
+            groups.value.forEach((group, index) => { if (groupErrors(index).length) group.open = true; });
             Snackbar.error('Gagal menyimpan. Periksa kembali input.');
         },
+        onFinish: () => { saving.value = false; },
     };
     if (isEditing) {
         router.put(route('masters.update', { entity: props.entity, id: props.item!.id }), payload, opts);
@@ -107,20 +158,32 @@ const remove = () => {
             </template>
         </var-space>
 
+        <div v-if="Object.keys(errors).length" role="alert" class="error-list">
+            <p v-for="(message, key) in errors" :key="key">{{ message }}</p>
+        </div>
         <div v-if="isCapacity" class="field-block standards-block">
-            <label class="field-label">Titik Uji (Standar)</label>
-            <div v-for="(s, idx) in standards" :key="idx" class="standard-row">
-                <var-input
-                    v-model="standards[idx]"
-                    placeholder="contoh: 500"
-                    type="number"
-                    step="0.0001"
-                />
-                <var-button size="small" text round type="danger" @click="removeStandard(idx)">
-                    <var-icon name="close-circle-outline" :size="20" />
-                </var-button>
-            </div>
-            <var-button size="small" text @click="addStandard">+ Tambah Titik</var-button>
+            <h3 class="field-label">Grup Titik Uji</h3>
+            <p v-if="!groups.length">Belum ada grup. Kapasitas boleh disimpan tanpa grup.</p>
+            <details v-for="(group, index) in groups" :key="group.key" :open="group.open" class="group-card" @toggle="group.open = ($event.target as HTMLDetailsElement).open">
+                <summary>{{ group.name || `Grup ${index + 1}` }} · {{ group.standards.length }} titik</summary>
+                <div class="group-content">
+                    <label :for="`group-name-${group.key}`">Nama grup</label>
+                    <input :id="`group-name-${group.key}`" v-model="group.name" maxlength="255" :disabled="saving" />
+                    <label :for="`group-media-${group.key}`">Media referensi</label>
+                    <input :id="`group-media-${group.key}`" v-model="group.reference_media" maxlength="255" :disabled="saving" />
+                    <div v-for="(point, pointIndex) in group.standards" :key="point.key" class="standard-row">
+                        <label :for="`point-${point.key}`">Titik {{ pointIndex + 1 }}</label>
+                        <input :id="`point-${point.key}`" v-model="point.standard_value" type="text" inputmode="decimal" :disabled="saving" :aria-invalid="!!errors[`groups.${index}.standards.${pointIndex}.standard_value`]" />
+                        <var-button size="small" text type="danger" :disabled="saving || group.standards.length <= 1" @click="removePoint(group, pointIndex)">Hapus Titik {{ pointIndex + 1 }}</var-button>
+                    </div>
+                    <div v-if="groupErrors(index).length" role="alert" class="error-list">
+                        <p v-for="([key, message]) in groupErrors(index)" :key="key">{{ message }}</p>
+                    </div>
+                    <var-button size="small" text :disabled="saving" @click="group.standards.push({ standard_value: '', key: nextKey++ })">+ Tambah Titik</var-button>
+                    <var-button size="small" text type="danger" :disabled="saving" @click="removeGroup(group)">Hapus Grup</var-button>
+                </div>
+            </details>
+            <var-button size="small" text :disabled="saving" @click="addGroup">+ Tambah Grup</var-button>
         </div>
 
         <div class="form-actions">
@@ -173,7 +236,13 @@ const remove = () => {
     gap: 8px;
 }
 
-.standard-row .var-input {
-    flex: 1;
-}
+.standard-row { flex-wrap: wrap; }
+.standard-row input { flex: 1; }
+.group-card { margin: 12px 0; border: 1px solid #f1f5f9; border-radius: 16px; overflow: hidden; }
+summary { padding: 14px; background: #fdf0ea; color: #9a4d00; cursor: pointer; font-weight: 600; overflow-wrap: anywhere; }
+.group-content { display: grid; gap: 10px; padding: 12px; }
+input { box-sizing: border-box; min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; font: inherit; color: #0f172a; background: #f8fafc; }
+summary:focus-visible, input:focus-visible { outline: 2px solid #fb8c00; outline-offset: -2px; }
+.error-list { color: #b91c1c; font-size: 13px; }
+.error-list p { margin: 4px 0; }
 </style>

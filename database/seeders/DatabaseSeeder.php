@@ -63,9 +63,14 @@ class DatabaseSeeder extends Seeder
                 'value' => $c['value'],
                 'unit' => $c['unit'],
             ]);
+            $group = $capacity->groups()->create([
+                'name' => $c['unit'] === 'mm' ? 'Pengukuran' : 'Penimbangan',
+                'reference_media' => $c['unit'] === 'mm' ? 'Gauge Block' : 'Anak Timbangan',
+                'sort_order' => 0,
+            ]);
             foreach ($c['standards'] as $i => $standard) {
                 StandardTemplate::create([
-                    'capacity_id' => $capacity->id,
+                    'standard_group_id' => $group->id,
                     'standard_value' => $standard,
                     'sort_order' => $i,
                 ]);
@@ -117,22 +122,30 @@ class DatabaseSeeder extends Seeder
             'acceptable_limit_id' => AcceptableLimit::where('name', '±0.5 mm')->first()->id,
         ]);
 
-        // Sample calibration test (PASS) for W.FL.5, jatuh tempo bulan ini
         $instrument = Instrument::where('code', 'W.FL.5')->first();
         $test = CalibrationTest::create([
             'instrument_id' => $instrument->id,
             'test_date' => now()->subMonth()->toDateString(),
-            'next_test_date' => now()->toDateString(),
+            'next_test_date' => now()->subMonth()->addMonth()->toDateString(),
             'tester_id' => $superAdmin->id,
-            'status' => 'PASS',
+            'status' => 'OK',
+            'computed_status' => 'OK',
+            'avg_correction' => 1,
+            'min_correction_snapshot' => $instrument->acceptableLimit->min_correction,
+            'max_correction_snapshot' => $instrument->acceptableLimit->max_correction,
         ]);
-        foreach ($instrument->capacity->standards as $s) {
+        foreach ($instrument->capacity->groups->first()->standards as $s) {
             CalibrationTestItem::create([
                 'calibration_test_id' => $test->id,
                 'standard_value' => $s->standard_value,
                 'reading_value' => $s->standard_value + 1,
                 'correction' => 1,
                 'is_within_limit' => true,
+                'group_order' => 0,
+                'group_name' => $s->group->name,
+                'reference_media' => $s->group->reference_media,
+                'unit' => $instrument->acceptableLimit->unit,
+                'point_order' => $s->sort_order,
             ]);
         }
     }

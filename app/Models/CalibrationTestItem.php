@@ -8,6 +8,7 @@ class CalibrationTestItem extends Model
 {
     protected $fillable = [
         'calibration_test_id', 'standard_value', 'reading_value', 'correction', 'is_within_limit',
+        'group_order', 'group_name', 'reference_media', 'unit', 'point_order',
     ];
 
     protected $casts = [

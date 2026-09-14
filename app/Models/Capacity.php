@@ -11,8 +11,8 @@ class Capacity extends Model
 
     protected $fillable = ['name', 'value', 'unit'];
 
-    public function standards()
+    public function groups()
     {
-        return $this->hasMany(StandardTemplate::class)->orderBy('sort_order');
+        return $this->hasMany(StandardGroup::class)->orderBy('sort_order')->orderBy('id');
     }
 }

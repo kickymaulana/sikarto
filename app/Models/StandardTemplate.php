@@ -6,10 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class StandardTemplate extends Model
 {
-    protected $fillable = ['capacity_id', 'standard_value', 'sort_order'];
+    protected $fillable = ['standard_group_id', 'standard_value', 'sort_order'];
 
-    public function capacity()
+    public function group()
     {
-        return $this->belongsTo(Capacity::class);
+        return $this->belongsTo(StandardGroup::class, 'standard_group_id');
     }
 }

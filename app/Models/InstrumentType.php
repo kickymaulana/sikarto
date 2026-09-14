@@ -10,9 +10,4 @@ class InstrumentType extends Model
     use SoftDeletes;
 
     protected $fillable = ['name'];
-
-    public function standards()
-    {
-        return $this->hasMany(StandardTemplate::class)->orderBy('sort_order');
-    }
 }
