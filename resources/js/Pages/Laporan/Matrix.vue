@@ -115,8 +115,8 @@ const onTypeChange = (value: string | number) => {
                         </tr>
                         <tr>
                             <template v-for="m in monthNames" :key="`s-${m}`">
-                                <th class="sub center">Uji</th>
                                 <th class="sub center">Next</th>
+                                <th class="sub center">Uji</th>
                             </template>
                         </tr>
                     </thead>
@@ -129,17 +129,17 @@ const onTypeChange = (value: string | number) => {
                             <template v-for="(m, idx) in monthNames" :key="`${row.code}-${idx}`">
                                 <td
                                     class="cell-day center"
-                                    :style="{ background: matrixBg[row.test_cell[idx + 1]?.status] ?? matrixBg.none }"
-                                    :title="statusLabel(row.test_cell[idx + 1]?.status) + (row.test_cell[idx + 1]?.day ? ' · Tanggal ' + row.test_cell[idx + 1]?.day : '')"
-                                >
-                                    {{ row.test_cell[idx + 1]?.day || '—' }}
-                                </td>
-                                <td
-                                    class="cell-day center"
                                     :style="{ background: matrixBg[row.next_cell[idx + 1]?.status] ?? matrixBg.none }"
                                     :title="statusLabel(row.next_cell[idx + 1]?.status) + (row.next_cell[idx + 1]?.day ? ' · Tanggal ' + row.next_cell[idx + 1]?.day : '')"
                                 >
                                     {{ row.next_cell[idx + 1]?.day || '—' }}
+                                </td>
+                                <td
+                                    class="cell-day center"
+                                    :style="{ background: matrixBg[row.test_cell[idx + 1]?.status] ?? matrixBg.none }"
+                                    :title="statusLabel(row.test_cell[idx + 1]?.status) + (row.test_cell[idx + 1]?.day ? ' · Tanggal ' + row.test_cell[idx + 1]?.day : '')"
+                                >
+                                    {{ row.test_cell[idx + 1]?.day || '—' }}
                                 </td>
                             </template>
                         </tr>

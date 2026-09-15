@@ -208,8 +208,10 @@ class MatrixTest extends TestCase
         $sheet = $reader->load($tmp)->getSheet(0);
         $this->assertSame('Kode Alat', $sheet->getCell('A1')->getValue());
         $this->assertSame('W.FL.1', $sheet->getCell('A2')->getValue());
-        $this->assertSame('Jan Uji', $sheet->getCell('E1')->getValue());
+        $this->assertSame('Jan Next', $sheet->getCell('E1')->getValue());
         $this->assertSame('—', $sheet->getCell('E2')->getValue());
+        $this->assertSame('Jan Uji', $sheet->getCell('F1')->getValue());
+        $this->assertSame('—', $sheet->getCell('F2')->getValue());
         unlink($tmp);
     }
 

@@ -71,8 +71,8 @@ class MatrixExport implements FromArray, ShouldAutoSize, WithColumnWidths, WithC
                 $row['location'] ?? '—',
             ];
             foreach (range(1, 12) as $m) {
-                $line[] = $row['test_cell'][$m]['day'] ?: '—';
                 $line[] = $row['next_cell'][$m]['day'] ?: '—';
+                $line[] = $row['test_cell'][$m]['day'] ?: '—';
             }
             $rows[] = $line;
         }
@@ -111,10 +111,10 @@ class MatrixExport implements FromArray, ShouldAutoSize, WithColumnWidths, WithC
                 foreach ($headers as $i => $h) {
                     $sheet->setCellValue(Coordinate::stringFromColumnIndex($i + 1).'1', $h);
                 }
-                $col = 5; // E = bulan 1 Uji
+                $col = 5;
                 foreach ($this->monthNames as $m) {
-                    $sheet->setCellValue(Coordinate::stringFromColumnIndex($col).'1', $m.' Uji');
-                    $sheet->setCellValue(Coordinate::stringFromColumnIndex($col + 1).'1', $m.' Next');
+                    $sheet->setCellValue(Coordinate::stringFromColumnIndex($col).'1', $m.' Next');
+                    $sheet->setCellValue(Coordinate::stringFromColumnIndex($col + 1).'1', $m.' Uji');
                     $col += 2;
                 }
 
@@ -132,8 +132,8 @@ class MatrixExport implements FromArray, ShouldAutoSize, WithColumnWidths, WithC
                     $dataIdx = 0;
                     foreach ($this->rows as $row) {
                         $r = $dataIdx + 2; // data mulai baris 2
-                        foreach (['test_cell', 'next_cell'] as $k) {
-                            $cellLetter = Coordinate::stringFromColumnIndex(4 + ($mi - 1) * 2 + ($k === 'test_cell' ? 1 : 2));
+                        foreach (['next_cell', 'test_cell'] as $k) {
+                            $cellLetter = Coordinate::stringFromColumnIndex(4 + ($mi - 1) * 2 + ($k === 'next_cell' ? 1 : 2));
                             $status = $row[$k][$mi]['status'] ?? 'none';
                             if (isset($this->statusBg[$status]) && $status !== 'none') {
                                 $sheet->getStyle($cellLetter.$r)
