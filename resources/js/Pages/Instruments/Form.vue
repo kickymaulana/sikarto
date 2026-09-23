@@ -93,31 +93,31 @@ const isInactive = computed(() => {
             </div>
             <div class="field-block">
                 <label class="field-label">Factory *</label>
-                <var-select v-model="form.factory_id" placeholder="Pilih Factory" :options="toOpts(options.factories)" @change="form.department_id = ''" />
+                <var-select v-model="form.factory_id" placeholder="Pilih Factory" :options="toOpts(options.factories)" filterable @change="form.department_id = ''" />
             </div>
             <div class="field-block">
                 <label class="field-label">Departemen *</label>
-                <var-select v-model="form.department_id" placeholder="Pilih Departemen" :options="toOpts(filteredDepartments)" />
+                <var-select v-model="form.department_id" placeholder="Pilih Departemen" :options="toOpts(filteredDepartments)" filterable />
             </div>
             <div class="field-block">
                 <label class="field-label">Jenis Alat *</label>
-                <var-select v-model="form.instrument_type_id" placeholder="Pilih Jenis Alat" :options="toOpts(options.types)" />
+                <var-select v-model="form.instrument_type_id" placeholder="Pilih Jenis Alat" :options="toOpts(options.types)" filterable />
             </div>
             <div class="field-block">
                 <label class="field-label">Merk *</label>
-                <var-select v-model="form.brand_id" placeholder="Pilih Merk" :options="toOpts(options.brands)" />
+                <var-select v-model="form.brand_id" placeholder="Pilih Merk" :options="toOpts(options.brands)" filterable />
             </div>
             <div class="field-block">
                 <label class="field-label">Kapasitas *</label>
-                <var-select v-model="form.capacity_id" placeholder="Pilih Kapasitas" :options="toOpts(options.capacities)" />
+                <var-select v-model="form.capacity_id" placeholder="Pilih Kapasitas" :options="toOpts(options.capacities)" filterable />
             </div>
             <div class="field-block">
                 <label class="field-label">Toleransi *</label>
-                <var-select v-model="form.acceptable_limit_id" placeholder="Pilih Toleransi" :options="toOpts(options.limits)" />
+                <var-select v-model="form.acceptable_limit_id" placeholder="Pilih Toleransi" :options="toOpts(options.limits)" filterable />
             </div>
             <div class="field-block">
                 <label class="field-label">Spesifikasi (opsional)</label>
-                <var-select v-model="form.specification_id" placeholder="Pilih Spesifikasi" :options="toOpts(options.specifications)" />
+                <var-select v-model="form.specification_id" placeholder="Pilih Spesifikasi" :options="toOpts(options.specifications)" filterable />
             </div>
             <div class="field-block">
                 <label class="field-label">Catatan (opsional)</label>
