@@ -15,6 +15,10 @@ class TestController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'per_page' => ['nullable', 'integer', 'in:20,50,100'],
+        ]);
+
         $query = CalibrationTest::with(['instrument', 'instrument.type', 'instrument.factory', 'tester'])
             ->orderBy('test_date', 'desc');
 
@@ -26,7 +30,7 @@ class TestController extends Controller
         }
 
         return Inertia::render('Tests/Index', [
-            'tests' => $query->paginate(20)->withQueryString(),
+            'tests' => $query->paginate($request->integer('per_page', 20))->withQueryString(),
             'filters' => $request->only(['status', 'search']),
         ]);
     }

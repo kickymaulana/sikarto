@@ -28,7 +28,10 @@ searchState.value = props.filters?.search ?? '';
 const currentPage = computed(() => props.tests.current_page);
 
 const performSearch = (search: string) => {
-    router.get(route('tests.index'), { search: search || undefined }, {
+    router.get(route('tests.index'), {
+        search: search || undefined,
+        per_page: props.tests.per_page,
+    }, {
         preserveState: true,
         preserveScroll: true,
     });
@@ -36,8 +39,13 @@ const performSearch = (search: string) => {
 
 watch(searchState, (val) => performSearch(val));
 
-const onPageChange = (page: number) => {
-    router.get(route('tests.index', { page }), {
+const onPageChange = (page: number, perPage: number) => {
+    router.get(route('tests.index'), {
+        page,
+        per_page: perPage,
+        search: searchState.value || undefined,
+        status: props.filters.status,
+    }, {
         preserveScroll: true,
         preserveState: true,
     });
@@ -82,6 +90,7 @@ const statusType = (status: string) => {
         :current="currentPage"
         :total="tests.total"
         :size="tests.per_page"
+        :size-option="[20, 50, 100]"
         :max-pager-count="7"
         @change="onPageChange"
         class="pagination-wrap"

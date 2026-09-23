@@ -223,6 +223,10 @@ class MasterController extends Controller
 
     public function index(Request $request, string $entity)
     {
+        $request->validate([
+            'per_page' => ['nullable', 'integer', 'in:20,50,100'],
+        ]);
+
         abort_unless(isset($this->entities[$entity]), 404);
 
         $config = $this->entities[$entity];
@@ -245,7 +249,7 @@ class MasterController extends Controller
             });
         }
 
-        $items = $query->orderBy('id', 'desc')->paginate(20)->withQueryString();
+        $items = $query->orderBy('id', 'desc')->paginate($request->integer('per_page', 20))->withQueryString();
 
         return Inertia::render('Masters/Index', [
             'entity' => $entity,

@@ -27,14 +27,21 @@ const props = defineProps<{
 const currentPage = computed(() => props.items.current_page);
 
 watch(searchState, (val) => {
-    router.get(route('masters.index', { entity: props.entity }), { search: val || undefined }, {
+    router.get(route('masters.index', { entity: props.entity }), {
+        search: val || undefined,
+        per_page: props.items.per_page,
+    }, {
         preserveState: true,
         preserveScroll: true,
     });
 });
 
-const onPageChange = (page: number) => {
-    router.get(route('masters.index', { entity: props.entity, page }), {
+const onPageChange = (page: number, perPage: number) => {
+    router.get(route('masters.index', { entity: props.entity }), {
+        page,
+        per_page: perPage,
+        search: searchState.value || undefined,
+    }, {
         preserveScroll: true,
         preserveState: true,
     });
@@ -89,6 +96,7 @@ const displayName = (item: Record<string, any>) => {
             :current="currentPage"
             :total="items.total"
             :size="items.per_page"
+            :size-option="[20, 50, 100]"
             :max-pager-count="7"
             @change="onPageChange"
             class="pagination"

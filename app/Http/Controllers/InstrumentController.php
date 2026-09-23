@@ -17,6 +17,10 @@ class InstrumentController extends Controller
 {
     public function index(Request $request)
     {
+        $request->validate([
+            'per_page' => ['nullable', 'integer', 'in:20,50,100'],
+        ]);
+
         $query = Instrument::withTrashed()->with(['factory', 'department', 'type', 'brand', 'capacity', 'acceptableLimit', 'specification', 'latestTest']);
 
         if ($request->filled('search')) {
@@ -29,7 +33,7 @@ class InstrumentController extends Controller
             });
         }
 
-        $instruments = $query->orderBy('code')->paginate(20)->withQueryString();
+        $instruments = $query->orderBy('code')->paginate($request->integer('per_page', 20))->withQueryString();
 
         return Inertia::render('Instruments/Index', [
             'instruments' => $instruments,

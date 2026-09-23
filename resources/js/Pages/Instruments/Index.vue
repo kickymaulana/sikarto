@@ -20,14 +20,21 @@ const props = defineProps<{
 const currentPage = computed(() => props.instruments.current_page);
 
 watch(searchState, (val) => {
-    router.get(route('instruments.index'), { search: val || undefined }, {
+    router.get(route('instruments.index'), {
+        search: val || undefined,
+        per_page: props.instruments.per_page,
+    }, {
         preserveState: true,
         preserveScroll: true,
     });
 });
 
-const onPageChange = (page: number) => {
-    router.get(route('instruments.index', { page }), {
+const onPageChange = (page: number, perPage: number) => {
+    router.get(route('instruments.index'), {
+        page,
+        per_page: perPage,
+        search: searchState.value || undefined,
+    }, {
         preserveScroll: true,
         preserveState: true,
     });
@@ -59,6 +66,7 @@ const onPageChange = (page: number) => {
         :current="currentPage"
         :total="instruments.total"
         :size="instruments.per_page"
+        :size-option="[20, 50, 100]"
         :max-pager-count="7"
         @change="onPageChange"
         class="pagination"
