@@ -45,6 +45,15 @@ const filteredDepartments = computed(() =>
 const toOpts = (list: Array<Record<string, any>>, labelKey = 'name') =>
     list.map((o) => ({ label: o[labelKey], value: o.id }));
 
+const departmentOptions = computed(() => {
+    const factoryNames = new Map(props.options.factories.map((factory) => [factory.id, factory.name]));
+
+    return filteredDepartments.value.map((department) => ({
+        label: `${department.name} — ${factoryNames.get(department.factory_id) ?? ''}`,
+        value: department.id,
+    }));
+});
+
 const submit = () => {
     saving.value = true;
     const opts = {
@@ -97,7 +106,7 @@ const isInactive = computed(() => {
             </div>
             <div class="field-block">
                 <label class="field-label">Departemen *</label>
-                <var-select v-model="form.department_id" placeholder="Pilih Departemen" :options="toOpts(filteredDepartments)" filterable />
+                <var-select v-model="form.department_id" placeholder="Pilih Departemen" :options="departmentOptions" filterable />
             </div>
             <div class="field-block">
                 <label class="field-label">Jenis Alat *</label>
