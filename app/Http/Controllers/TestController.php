@@ -54,34 +54,48 @@ class TestController extends Controller
         $selectedStatus = $data['status'] ?? null;
         $isManual = in_array($selectedStatus, ['SPARE', 'NA', 'SERVICE'], true);
         $items = $isManual ? [] : $request->validate([
-            'items' => 'required|array|min:1',
+            'items' => 'nullable|array',
             'items.*.standard_template_id' => 'required|integer|distinct',
             'items.*.reading_value' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
-        ])['items'];
+        ])['items'] ?? [];
+        $dimensionChecks = $isManual ? [] : $request->validate([
+            'dimension_checks' => 'nullable|array',
+            'dimension_checks.*.dimension' => 'required|string|distinct|in:length,width,diameter',
+            'dimension_checks.*.measured_value' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+        ])['dimension_checks'] ?? [];
 
-        $test = DB::transaction(function () use ($request, $data, $selectedStatus, $isManual, $items) {
-            $instrument = Instrument::with(['acceptableLimit', 'capacity.groups.standards'])->lockForUpdate()->findOrFail($data['instrument_id']);
+        $test = DB::transaction(function () use ($request, $data, $selectedStatus, $isManual, $items, $dimensionChecks) {
+            $instrument = Instrument::with(['acceptableLimit', 'capacity.groups.standards', 'specification'])->lockForUpdate()->findOrFail($data['instrument_id']);
             $limit = $instrument->acceptableLimit;
             $computedStatus = null;
             $avgCorrection = null;
             $testItems = [];
+            $testDimensionChecks = [];
 
             if (! $isManual) {
                 $groups = $instrument->capacity?->groups ?? collect();
                 $templates = $groups->flatMap(fn ($group) => $group->standards);
                 $expectedIds = $templates->pluck('id')->sort()->values()->all();
                 $submittedIds = collect($items)->pluck('standard_template_id')->map(fn ($id) => (int) $id)->sort()->values()->all();
-                if (empty($expectedIds) || $expectedIds !== $submittedIds || $groups->contains(fn ($group) => $group->standards->isEmpty())) {
+                if ($expectedIds !== $submittedIds || $groups->contains(fn ($group) => $group->standards->isEmpty())) {
                     throw ValidationException::withMessages(['items' => 'Isi semua titik uji kapasitas tepat satu kali tanpa titik tambahan.']);
                 }
-                if (! $limit) {
+                if (empty($expectedIds) && empty($dimensionChecks)) {
+                    throw ValidationException::withMessages(['items' => 'Alat harus memiliki titik uji kapasitas atau pemeriksaan ukuran.']);
+                }
+                if (empty($expectedIds) && ! in_array($selectedStatus, ['OK', 'NG'], true)) {
+                    throw ValidationException::withMessages(['status' => 'Pilih status OK atau NG untuk pengujian ukuran.']);
+                }
+                if ($expectedIds && ! $limit) {
                     throw ValidationException::withMessages(['instrument_id' => 'Batas toleransi alat tidak tersedia.']);
                 }
-                Validator::make($limit->toArray(), [
-                    'min_correction' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
-                    'max_correction' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999|gte:min_correction',
-                    'unit' => 'required|string|max:20',
-                ])->validate();
+                if ($expectedIds) {
+                    Validator::make($limit->toArray(), [
+                        'min_correction' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+                        'max_correction' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999|gte:min_correction',
+                        'unit' => 'required|string|max:20',
+                    ])->validate();
+                }
                 $readings = collect($items)->keyBy('standard_template_id');
                 foreach ($groups as $groupOrder => $group) {
                     foreach ($group->standards as $pointOrder => $standard) {
@@ -106,8 +120,39 @@ class TestController extends Controller
                         ];
                     }
                 }
-                $avgCorrection = round(array_sum(array_column($testItems, 'correction')) / count($testItems), 4);
-                $computedStatus = $limit->isWithin($avgCorrection) ? 'OK' : 'NG';
+                if ($testItems) {
+                    $avgCorrection = round(array_sum(array_column($testItems, 'correction')) / count($testItems), 4);
+                    $computedStatus = $limit->isWithin($avgCorrection) ? 'OK' : 'NG';
+                }
+
+                $dimensions = collect([
+                    'length' => ['label' => 'Panjang', 'min' => $instrument->specification?->length_min, 'max' => $instrument->specification?->length_max],
+                    'width' => ['label' => 'Lebar', 'min' => $instrument->specification?->width_min, 'max' => $instrument->specification?->width_max],
+                    'diameter' => ['label' => 'Diameter', 'min' => $instrument->specification?->diameter_min, 'max' => $instrument->specification?->diameter_max],
+                ])->filter(fn ($dimension) => $dimension['min'] !== null && $dimension['max'] !== null);
+                $expectedDimensions = $dimensions->keys()->sort()->values()->all();
+                $submittedDimensions = collect($dimensionChecks)->pluck('dimension')->sort()->values()->all();
+                if ($expectedDimensions !== $submittedDimensions) {
+                    throw ValidationException::withMessages(['dimension_checks' => 'Isi semua ukuran spesifikasi tepat satu kali tanpa ukuran tambahan.']);
+                }
+                if ($dimensions->isNotEmpty() && empty($instrument->specification?->dimension_unit)) {
+                    throw ValidationException::withMessages(['instrument_id' => 'Satuan ukuran spesifikasi tidak tersedia.']);
+                }
+                $measurements = collect($dimensionChecks)->keyBy('dimension');
+                foreach ($dimensions as $dimensionKey => $dimension) {
+                    $key = $dimensions->keys()->search($dimensionKey);
+                    $measured = $measurements[$dimensionKey]['measured_value'];
+                    $testDimensionChecks[] = [
+                        'dimension' => $dimensionKey,
+                        'label' => $dimension['label'],
+                        'min_value' => $dimension['min'],
+                        'max_value' => $dimension['max'],
+                        'measured_value' => $measured,
+                        'unit' => $instrument->specification->dimension_unit,
+                        'is_within_range' => (float) $measured >= (float) $dimension['min'] && (float) $measured <= (float) $dimension['max'],
+                        'sort_order' => $key,
+                    ];
+                }
             }
 
             $testDate = Carbon::parse($data['test_date']);
@@ -125,6 +170,7 @@ class TestController extends Controller
                 'notes' => $data['notes'] ?? null,
             ]);
             $test->items()->createMany($testItems);
+            $test->dimensionChecks()->createMany($testDimensionChecks);
 
             return $test;
         });
@@ -136,7 +182,7 @@ class TestController extends Controller
     public function show(CalibrationTest $test)
     {
         $test->load(['instrument', 'instrument.type', 'instrument.factory', 'instrument.department',
-            'instrument.brand', 'instrument.capacity', 'instrument.acceptableLimit', 'instrument.specification', 'tester', 'items']);
+            'instrument.brand', 'instrument.capacity', 'instrument.acceptableLimit', 'instrument.specification', 'tester', 'items', 'dimensionChecks']);
 
         return Inertia::render('Tests/Show', ['test' => $test]);
     }

@@ -10,6 +10,7 @@ use App\Models\Department;
 use App\Models\Factory;
 use App\Models\Instrument;
 use App\Models\InstrumentType;
+use App\Models\Specification;
 use App\Models\StandardTemplate;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -84,6 +85,70 @@ class CalibrationTestTest extends TestCase
         $this->assertEquals(2, $test->items()->count());
         $this->assertTrue($test->items()->first()->is_within_limit);
         $this->assertNotNull($test->avg_correction);
+    }
+
+    public function test_dimension_checks_are_snapshotted_without_changing_status(): void
+    {
+        $instrument = $this->makeInstrument();
+        $specification = Specification::create([
+            'name' => 'Tapak Holder',
+            'length_min' => 50.7,
+            'length_max' => 54,
+            'width_min' => 25.7,
+            'width_max' => 26,
+            'diameter_min' => 88.5,
+            'diameter_max' => 89,
+            'dimension_unit' => 'mm',
+        ]);
+        $instrument->update(['specification_id' => $specification->id]);
+
+        $response = $this->actingAs($this->inspector())->post('/tests', [
+            'instrument_id' => $instrument->id,
+            'test_date' => '2026-08-01',
+            'items' => [
+                ['standard_template_id' => StandardTemplate::where('standard_value', 500)->value('id'), 'reading_value' => 500],
+                ['standard_template_id' => StandardTemplate::where('standard_value', 700)->value('id'), 'reading_value' => 700],
+            ],
+            'dimension_checks' => [
+                ['dimension' => 'length', 'measured_value' => 54],
+                ['dimension' => 'width', 'measured_value' => 27],
+                ['dimension' => 'diameter', 'measured_value' => 88.5],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $test = CalibrationTest::firstOrFail();
+        $this->assertSame('OK', $test->status);
+        $this->assertCount(3, $test->dimensionChecks);
+        $this->assertFalse($test->dimensionChecks->firstWhere('dimension', 'width')->is_within_range);
+        $this->assertEquals(25.7, $test->dimensionChecks->firstWhere('dimension', 'width')->min_value);
+        $specification->update(['width_min' => 20]);
+        $this->assertEquals(25.7, $test->dimensionChecks()->where('dimension', 'width')->first()->min_value);
+    }
+
+    public function test_dimension_checks_must_match_specification(): void
+    {
+        $instrument = $this->makeInstrument();
+        $specification = Specification::create([
+            'name' => 'Tapak Holder',
+            'length_min' => 50.7,
+            'length_max' => 54,
+            'dimension_unit' => 'mm',
+        ]);
+        $instrument->update(['specification_id' => $specification->id]);
+
+        $response = $this->actingAs($this->inspector())->post('/tests', [
+            'instrument_id' => $instrument->id,
+            'test_date' => '2026-08-01',
+            'items' => [
+                ['standard_template_id' => StandardTemplate::where('standard_value', 500)->value('id'), 'reading_value' => 500],
+                ['standard_template_id' => StandardTemplate::where('standard_value', 700)->value('id'), 'reading_value' => 700],
+            ],
+            'dimension_checks' => [],
+        ]);
+
+        $response->assertSessionHasErrors('dimension_checks');
+        $this->assertDatabaseCount('calibration_tests', 0);
     }
 
     public function test_fail_when_avg_exceeds_limit(): void

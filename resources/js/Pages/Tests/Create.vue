@@ -15,15 +15,26 @@ type Instrument = {
     department: { name: string } | null;
     type: { name: string } | null;
     brand: { name: string } | null;
-    specification: { name: string } | null;
+    specification: {
+        name: string;
+        length_min: Decimal | null;
+        length_max: Decimal | null;
+        width_min: Decimal | null;
+        width_max: Decimal | null;
+        diameter_min: Decimal | null;
+        diameter_max: Decimal | null;
+        dimension_unit: string | null;
+    } | null;
     capacity: { name: string; groups: Array<{ id: number; name: string; reference_media: string; standards: Array<{ id: number; standard_value: Decimal }> }> } | null;
     acceptable_limit: { name: string; min_correction: Decimal; max_correction: Decimal; unit: string } | null;
 };
 type Point = { standard_template_id: number; standard_value: Decimal; reading_value: string; index: number };
 type Group = { id: number; name: string; reference_media: string; open: boolean; points: Point[] };
+type DimensionCheck = { dimension: string; label: string; min: Decimal; max: Decimal; measured_value: string };
 const props = defineProps<{ instruments: Instrument[] }>();
 const selected = ref<Instrument | null>(null);
 const groups = ref<Group[]>([]);
+const dimensionChecks = ref<DimensionCheck[]>([]);
 const today = new Date();
 const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 const form = reactive({ instrument_id: '' as number | string, test_date: localToday, status: '', notes: '' });
@@ -71,7 +82,17 @@ const computedStatus = computed(() => {
     return avgCorrection.value >= Number(limit.min_correction) && avgCorrection.value <= Number(limit.max_correction) ? 'OK' : 'NG';
 });
 const finalStatus = computed(() => form.status || computedStatus.value);
-const canSubmit = computed(() => !!selected.value && !!form.test_date && form.test_date <= localToday && (isManual.value || (allFilled.value && limitValid.value)));
+const dimensionsFilled = computed(() => dimensionChecks.value.every((check) => scaled(check.measured_value) !== null));
+const dimensionStatus = (check: DimensionCheck) => {
+    const measured = scaled(check.measured_value);
+    const min = scaled(check.min);
+    const max = scaled(check.max);
+    if (measured === null || min === null || max === null) return '';
+    return measured >= min && measured <= max ? 'OK' : 'NG';
+};
+const hasCalibrationPoints = computed(() => items.value.length > 0);
+const measurementReady = computed(() => (hasCalibrationPoints.value ? allFilled.value && limitValid.value : dimensionChecks.value.length > 0 && ['OK', 'NG'].includes(form.status)) && dimensionsFilled.value);
+const canSubmit = computed(() => !!selected.value && !!form.test_date && form.test_date <= localToday && (isManual.value || measurementReady.value));
 const pointErrors = (point: Point) => Object.entries(errors.value).filter(([key]) => key === `items.${point.index}` || key.startsWith(`items.${point.index}.`));
 const selectInstrument = (id: unknown) => {
     selected.value = props.instruments.find((instrument) => instrument.id === Number(id)) ?? null;
@@ -86,6 +107,12 @@ const selectInstrument = (id: unknown) => {
         open: groupIndex === 0,
         points: group.standards.map((point) => ({ standard_template_id: point.id, standard_value: point.standard_value, reading_value: '', index: index++ })),
     }));
+    const specification = selected.value?.specification;
+    dimensionChecks.value = specification ? [
+        { dimension: 'length', label: 'Panjang', min: specification.length_min, max: specification.length_max },
+        { dimension: 'width', label: 'Lebar', min: specification.width_min, max: specification.width_max },
+        { dimension: 'diameter', label: 'Diameter', min: specification.diameter_min, max: specification.diameter_max },
+    ].filter((check) => check.min !== null && check.max !== null).map((check) => ({ ...check, min: check.min!, max: check.max!, measured_value: '' })) : [];
 };
 const submit = () => {
     if (!canSubmit.value || saving.value) return;
@@ -96,7 +123,10 @@ const submit = () => {
         test_date: form.test_date,
         notes: form.notes,
         ...(form.status ? { status: form.status } : {}),
-        ...(!isManual.value ? { items: items.value.map((point) => ({ standard_template_id: point.standard_template_id, reading_value: point.reading_value.trim() })) } : {}),
+        ...(!isManual.value ? {
+            items: items.value.map((point) => ({ standard_template_id: point.standard_template_id, reading_value: point.reading_value.trim() })),
+            dimension_checks: dimensionChecks.value.map((check) => ({ dimension: check.dimension, measured_value: check.measured_value.trim() })),
+        } : {}),
     };
     router.post(route('tests.store'), payload, {
         onError: (messages) => {
@@ -143,7 +173,7 @@ if (import.meta.env.DEV) {
         </div>
         <var-alert v-if="isManual" type="info">Status {{ form.status }} mengabaikan pengukuran. Input tetap tersimpan sementara di halaman ini, tetapi tidak dikirim atau disimpan sebagai hasil uji.</var-alert>
         <div v-show="!isManual" class="items-list">
-            <p v-if="!groups.length">Kapasitas belum memiliki grup titik uji. Lengkapi master kapasitas atau pilih SPARE/NA/SERVICE.</p>
+            <p v-if="!groups.length && !dimensionChecks.length">Alat belum memiliki titik uji kapasitas atau pemeriksaan ukuran. Lengkapi master atau pilih SPARE/NA/SERVICE.</p>
             <details v-for="group in groups" :key="group.id" :open="group.open" class="group-card" @toggle="group.open = ($event.target as HTMLDetailsElement).open">
                 <summary>{{ group.name }} · {{ progress(group) }}/{{ group.points.length }} titik valid</summary>
                 <div class="group-content">
@@ -162,8 +192,20 @@ if (import.meta.env.DEV) {
                     </div>
                 </div>
             </details>
-            <var-alert v-if="!allFilled" type="warning">Semua titik uji wajib diisi angka valid, termasuk nol. Status pilihan OK/NG tetap memerlukan semua titik.</var-alert>
-            <var-alert v-if="!limitValid" type="warning">Batas toleransi atau satuan tidak valid. Perbaiki master alat.</var-alert>
+            <var-alert v-if="hasCalibrationPoints && !allFilled" type="warning">Semua titik uji wajib diisi angka valid, termasuk nol. Status pilihan OK/NG tetap memerlukan semua titik.</var-alert>
+            <var-alert v-if="hasCalibrationPoints && !limitValid" type="warning">Batas toleransi atau satuan tidak valid. Perbaiki master alat.</var-alert>
+            <var-alert v-if="!hasCalibrationPoints && dimensionChecks.length && !['OK', 'NG'].includes(form.status)" type="warning">Pilih status OK atau NG secara manual untuk pengujian ukuran.</var-alert>
+            <div v-if="dimensionChecks.length" class="group-card">
+                <div class="group-content">
+                    <h3 class="card-title">Pemeriksaan Ukuran</h3>
+                    <div v-for="check in dimensionChecks" :key="check.dimension" class="item-row">
+                        <label :for="`dimension-${check.dimension}`">{{ check.label }} ({{ check.min }} s/d {{ check.max }} {{ selected.specification?.dimension_unit }})</label>
+                        <input :id="`dimension-${check.dimension}`" v-model="check.measured_value" type="text" inputmode="decimal" :disabled="saving" />
+                        <var-chip v-if="dimensionStatus(check)" :type="dimensionStatus(check) === 'OK' ? 'success' : 'danger'" size="mini">{{ dimensionStatus(check) }}</var-chip>
+                        <p v-if="check.measured_value !== '' && scaled(check.measured_value) === null" class="error-list">Isi angka maksimal 4 desimal, rentang ±99999999.9999.</p>
+                    </div>
+                </div>
+            </div>
         </div>
         <var-input v-model="form.notes" placeholder="Catatan (opsional)" :textarea="true" :disabled="saving" />
         <div class="result" aria-live="polite">

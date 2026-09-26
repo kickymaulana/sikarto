@@ -91,6 +91,15 @@ const bannerClass = (status: string) => {
                 <p v-if="['SPARE', 'NA', 'SERVICE'].includes(test.selected_status)">Status manual; pengukuran tidak disimpan dan status otomatis tidak dihitung.</p>
             </div>
 
+            <div v-if="test.dimension_checks.length > 0" class="white-card">
+                <h3 class="card-title">Hasil Pemeriksaan Ukuran</h3>
+                <div v-for="check in test.dimension_checks" :key="check.id" class="info-row">
+                    <span class="info-label">{{ check.label }} ({{ check.min_value }} s/d {{ check.max_value }} {{ check.unit }})</span>
+                    <span>{{ check.measured_value }} {{ check.unit }} <var-chip :type="check.is_within_range ? 'success' : 'danger'" size="mini">{{ check.is_within_range ? 'OK' : 'NG' }}</var-chip></span>
+                </div>
+                <p>Hasil ukuran tidak mengubah status pengujian.</p>
+            </div>
+
             <div v-if="test.items.length > 0" class="white-card">
                 <h3 class="card-title">Hasil Uji</h3>
                 <details v-for="(group, index) in snapshotGroups" :key="group.order" :open="index === 0" class="group-card">

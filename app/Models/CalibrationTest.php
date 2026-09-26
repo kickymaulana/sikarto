@@ -34,4 +34,9 @@ class CalibrationTest extends Model
     {
         return $this->hasMany(CalibrationTestItem::class);
     }
+
+    public function dimensionChecks()
+    {
+        return $this->hasMany(CalibrationTestDimensionCheck::class)->orderBy('sort_order');
+    }
 }

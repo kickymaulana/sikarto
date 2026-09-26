@@ -96,8 +96,26 @@ class MasterController extends Controller
             'model' => Specification::class,
             'label' => 'Spesifikasi',
             'columns' => [['key' => 'name', 'label' => 'Nama']],
-            'fields' => [['key' => 'name', 'label' => 'Nama', 'type' => 'text']],
-            'rules' => ['name' => 'required|string|max:255'],
+            'fields' => [
+                ['key' => 'name', 'label' => 'Nama', 'type' => 'text'],
+                ['key' => 'length_min', 'label' => 'Panjang Min', 'type' => 'number', 'step' => '0.0001'],
+                ['key' => 'length_max', 'label' => 'Panjang Max', 'type' => 'number', 'step' => '0.0001'],
+                ['key' => 'width_min', 'label' => 'Lebar Min', 'type' => 'number', 'step' => '0.0001'],
+                ['key' => 'width_max', 'label' => 'Lebar Max', 'type' => 'number', 'step' => '0.0001'],
+                ['key' => 'diameter_min', 'label' => 'Diameter Min', 'type' => 'number', 'step' => '0.0001'],
+                ['key' => 'diameter_max', 'label' => 'Diameter Max', 'type' => 'number', 'step' => '0.0001'],
+                ['key' => 'dimension_unit', 'label' => 'Satuan Ukuran', 'type' => 'text'],
+            ],
+            'rules' => [
+                'name' => 'required|string|max:255',
+                'length_min' => 'nullable|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+                'length_max' => 'nullable|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+                'width_min' => 'nullable|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+                'width_max' => 'nullable|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+                'diameter_min' => 'nullable|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+                'diameter_max' => 'nullable|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
+                'dimension_unit' => 'nullable|string|max:20',
+            ],
         ],
     ];
 
@@ -303,6 +321,9 @@ class MasterController extends Controller
 
         $config = $this->entities[$entity];
         $data = $request->validate($config['rules'] + ($entity === 'capacities' ? $this->groupRules() : []));
+        if ($entity === 'specifications') {
+            $this->validateDimensionRanges($data);
+        }
 
         DB::transaction(function () use ($config, $data, $entity) {
             $record = $config['model']::create(collect($data)->except('groups')->all());
@@ -321,6 +342,9 @@ class MasterController extends Controller
 
         $config = $this->entities[$entity];
         $data = $request->validate($config['rules'] + ($entity === 'capacities' ? $this->groupRules() : []));
+        if ($entity === 'specifications') {
+            $this->validateDimensionRanges($data);
+        }
 
         DB::transaction(function () use ($config, $data, $entity, $id) {
             $record = $config['model']::lockForUpdate()->findOrFail($id);
@@ -356,6 +380,25 @@ class MasterController extends Controller
             'groups.*.standards.*.id' => 'sometimes|required|integer|distinct',
             'groups.*.standards.*.standard_value' => 'required|numeric|decimal:0,4|between:-99999999.9999,99999999.9999',
         ];
+    }
+
+    private function validateDimensionRanges(array $data): void
+    {
+        $hasRange = false;
+        foreach (['length', 'width', 'diameter'] as $dimension) {
+            $min = $data["{$dimension}_min"] ?? null;
+            $max = $data["{$dimension}_max"] ?? null;
+            if (($min === null) !== ($max === null)) {
+                throw ValidationException::withMessages(["{$dimension}_min" => 'Batas minimum dan maksimum harus diisi bersama.']);
+            }
+            if ($min !== null && (float) $max < (float) $min) {
+                throw ValidationException::withMessages(["{$dimension}_max" => 'Batas maksimum harus lebih besar atau sama dengan minimum.']);
+            }
+            $hasRange = $hasRange || $min !== null;
+        }
+        if ($hasRange && empty($data['dimension_unit'])) {
+            throw ValidationException::withMessages(['dimension_unit' => 'Satuan ukuran wajib diisi bila ada rentang ukuran.']);
+        }
     }
 
     private function syncGroups(Capacity $capacity, array $groups): void

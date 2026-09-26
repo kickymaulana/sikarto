@@ -9,5 +9,8 @@ class Specification extends Model
 {
     use SoftDeletes;
 
-    protected $fillable = ['name'];
+    protected $fillable = [
+        'name', 'length_min', 'length_max', 'width_min', 'width_max',
+        'diameter_min', 'diameter_max', 'dimension_unit',
+    ];
 }
