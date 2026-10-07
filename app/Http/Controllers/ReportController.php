@@ -2,15 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\InternalKalibrasiExport;
 use App\Models\CalibrationTest;
 use App\Models\Factory;
 use App\Models\InstrumentType;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
     public function internalKalibrasi(Request $request)
+    {
+        $tests = $this->internalKalibrasiRows($request);
+
+        return Inertia::render('Laporan/InternalKalibrasi', [
+            'year' => (int) ($request->filled('year') ? $request->year : now()->year),
+            'factoryId' => $request->filled('factory_id') ? (int) $request->factory_id : null,
+            'typeId' => $request->filled('type_id') ? (int) $request->type_id : null,
+            'factories' => Factory::orderBy('name')->get(['id', 'name']),
+            'types' => InstrumentType::orderBy('name')->get(['id', 'name']),
+            'tests' => $tests,
+        ]);
+    }
+
+    public function internalKalibrasiExport(Request $request)
+    {
+        $year = (int) ($request->filled('year') ? $request->year : now()->year);
+        $fileName = 'Internal_Kalibrasi_Record_'.$year.'.xlsx';
+
+        return Excel::download(new InternalKalibrasiExport($this->internalKalibrasiRows($request)->all()), $fileName);
+    }
+
+    private function internalKalibrasiRows(Request $request)
     {
         $query = CalibrationTest::with([
             'instrument.department',
@@ -29,7 +53,7 @@ class ReportController extends Controller
             $query->whereHas('instrument', fn ($q) => $q->where('instrument_type_id', (int) $request->type_id));
         }
 
-        $tests = $query->get()->map(fn (CalibrationTest $test) => [
+        return $query->get()->map(fn (CalibrationTest $test) => [
             'id' => $test->id,
             'code' => $test->instrument?->code,
             'location' => $test->instrument?->department?->name,
@@ -43,14 +67,6 @@ class ReportController extends Controller
             'next_test_date' => $test->next_test_date?->format('d M Y'),
         ])->values();
 
-        return Inertia::render('Laporan/InternalKalibrasi', [
-            'year' => (int) ($request->filled('year') ? $request->year : now()->year),
-            'factoryId' => $request->filled('factory_id') ? (int) $request->factory_id : null,
-            'typeId' => $request->filled('type_id') ? (int) $request->type_id : null,
-            'factories' => Factory::orderBy('name')->get(['id', 'name']),
-            'types' => InstrumentType::orderBy('name')->get(['id', 'name']),
-            'tests' => $tests,
-        ]);
     }
 
     private function acceptableLimit(CalibrationTest $test): ?string

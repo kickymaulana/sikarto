@@ -78,6 +78,8 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:report.read');
     Route::get('/laporan/internal-kalibrasi', [ReportController::class, 'internalKalibrasi'])->name('laporan.internal-kalibrasi')
         ->middleware('permission:report.read');
+    Route::get('/laporan/internal-kalibrasi/export', [ReportController::class, 'internalKalibrasiExport'])->name('laporan.internal-kalibrasi.export')
+        ->middleware('permission:report.export');
     Route::get('/laporan', fn () => redirect()->route('laporan.matrix'))->name('laporan.index')
         ->middleware('permission:master.read|report.read');
 });

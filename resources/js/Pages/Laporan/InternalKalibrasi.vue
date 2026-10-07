@@ -50,6 +50,9 @@ const statusType = (status: string) => status === 'OK' ? 'success' : status === 
             <var-select class="filter-field" :model-value="String(year)" placeholder="Tahun" :options="years" @update:model-value="(value) => apply({ year: String(value), factory_id: factoryId?.toString(), type_id: typeId?.toString() })" />
             <var-select class="filter-field" :model-value="String(factoryId ?? '')" placeholder="Pilih pabrik" :options="factoryOptions" @update:model-value="(value) => apply({ year: String(year), factory_id: value ? String(value) : undefined, type_id: typeId?.toString() })" />
             <var-select class="filter-field" :model-value="String(typeId ?? '')" placeholder="Pilih jenis" :options="typeOptions" @update:model-value="(value) => apply({ year: String(year), factory_id: factoryId?.toString(), type_id: value ? String(value) : undefined })" />
+            <a class="export-btn" :href="route('laporan.internal-kalibrasi.export', { year, factory_id: factoryId ?? undefined, type_id: typeId ?? undefined })">
+                <var-button type="primary">Export Excel</var-button>
+            </a>
         </div>
 
         <div class="white-card table-wrap">
