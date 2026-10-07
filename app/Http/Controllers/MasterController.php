@@ -198,10 +198,7 @@ class MasterController extends Controller
                     ];
                 }
             }
-            $location = trim(
-                ($instrument->factory?->name ?? '').' / '.($instrument->department?->name ?? ''),
-                ' /'
-            );
+            $location = $instrument->department?->name;
             $rows[] = [
                 'code' => $instrument->code,
                 'type' => $instrument->type?->name,
