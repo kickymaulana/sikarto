@@ -111,6 +111,37 @@ class MatrixTest extends TestCase
         );
     }
 
+    public function test_matrix_filters_by_factory_id_query(): void
+    {
+        $user = $this->makeUserWithRole('inspector');
+        $timbangan = InstrumentType::create(['name' => 'Timbangan Digital']);
+        [$factory] = $this->makeFactoryAndDept();
+        $otherFactory = Factory::create(['name' => 'Plant 2']);
+        $otherDept = Department::create(['name' => 'QA', 'factory_id' => $otherFactory->id]);
+
+        $this->makeInstrument([
+            'code' => 'P1-001',
+            'name' => 'Alat Plant 1',
+            'instrument_type_id' => $timbangan->id,
+            'factory_id' => $factory->id,
+        ]);
+        $this->makeInstrument([
+            'code' => 'P2-001',
+            'name' => 'Alat Plant 2',
+            'instrument_type_id' => $timbangan->id,
+            'factory_id' => $otherFactory->id,
+            'department_id' => $otherDept->id,
+        ]);
+
+        $response = $this->actingAs($user)->get('/laporan/matrix?factory_id='.$factory->id);
+        $response->assertInertia(fn ($page) => $page
+            ->where('factoryId', $factory->id)
+            ->has('factories')
+            ->has('rows', 1)
+            ->where('rows.0.code', 'P1-001')
+        );
+    }
+
     public function test_matrix_sorts_naturally_by_code(): void
     {
         $user = $this->makeUserWithRole('inspector');

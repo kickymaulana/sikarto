@@ -121,12 +121,14 @@ class MasterController extends Controller
 
     public function matrix(Request $request)
     {
-        [$year, $typeId, $types, $rows] = $this->buildMatrixData($request, null);
+        [$year, $typeId, $factoryId, $types, $factories, $rows] = $this->buildMatrixData($request, null);
 
         return Inertia::render('Laporan/Matrix', [
             'year' => $year,
             'typeId' => $typeId,
+            'factoryId' => $factoryId,
             'types' => $types,
+            'factories' => $factories,
             'rows' => $rows,
             'counts' => $this->counts(),
         ]);
@@ -134,7 +136,7 @@ class MasterController extends Controller
 
     public function matrixExport(Request $request)
     {
-        [$year, $typeId, $types, $rows] = $this->buildMatrixData($request, null);
+        [$year, $typeId, $factoryId, $types, $factories, $rows] = $this->buildMatrixData($request, null);
 
         $typeName = $typeId ? InstrumentType::find($typeId)?->name : 'Semua Jenis';
         $fileName = 'Matriks_Uji_'.str_replace(' ', '-', (string) $typeName).'-'.$year.'.xlsx';
@@ -149,6 +151,7 @@ class MasterController extends Controller
 
         $defaultType = InstrumentType::where('name', 'Timbangan Digital')->first();
         $typeId = $request->filled('type_id') ? (int) $request->type_id : ($defaultType?->id);
+        $factoryId = $request->filled('factory_id') ? (int) $request->factory_id : null;
 
         $tests = CalibrationTest::with('instrument')
             ->where(function ($query) use ($year) {
@@ -162,9 +165,13 @@ class MasterController extends Controller
         if ($typeId) {
             $instrumentsQuery->where('instrument_type_id', $typeId);
         }
+        if ($factoryId) {
+            $instrumentsQuery->where('factory_id', $factoryId);
+        }
         $instruments = $instrumentsQuery->get();
 
         $types = InstrumentType::orderBy('name')->get(['id', 'name']);
+        $factories = Factory::orderBy('name')->get(['id', 'name']);
 
         $rows = [];
         foreach ($instruments as $instrument) {
@@ -208,7 +215,7 @@ class MasterController extends Controller
 
         usort($rows, fn ($a, $b) => $this->naturalCodeCompare($a['code'], $b['code']));
 
-        return [$year, $typeId, $types, $rows];
+        return [$year, $typeId, $factoryId, $types, $factories, $rows];
     }
 
     private function naturalCodeCompare(string $a, string $b): int

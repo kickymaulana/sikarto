@@ -11,7 +11,9 @@ type Cell = { day: string; status: string };
 const props = defineProps<{
     year: number;
     typeId: number | null;
+    factoryId: number | null;
     types: Array<{ id: number; name: string }>;
+    factories: Array<{ id: number; name: string }>;
     rows: Array<{
         code: string;
         type?: string;
@@ -33,6 +35,11 @@ const typeOptions = [
     ...props.types.map((t) => ({ label: t.name, value: String(t.id) })),
 ];
 
+const factoryOptions = [
+    { label: 'Semua Pabrik', value: '' },
+    ...props.factories.map((factory) => ({ label: factory.name, value: String(factory.id) })),
+];
+
 const matrixColors: Record<string, string> = {
     none: '#e0e0e0',
     OK: '#4caf50',
@@ -52,7 +59,11 @@ const matrixBg: Record<string, string> = {
 const statusLabel = (s: string) => (s === 'none' ? '—' : s);
 
 const onYearChange = (value: string | number) => {
-    router.get(route('laporan.matrix', { year: String(value), type_id: props.typeId ?? undefined }), {}, {
+    router.get(route('laporan.matrix', {
+        year: String(value),
+        type_id: props.typeId ?? undefined,
+        factory_id: props.factoryId ?? undefined,
+    }), {}, {
         preserveState: true,
         preserveScroll: true,
     });
@@ -60,13 +71,27 @@ const onYearChange = (value: string | number) => {
 
 const onTypeChange = (value: string | number) => {
     const typeId = value === '' || value === null || value === undefined ? undefined : Number(value);
-    router.get(route('laporan.matrix', { year: props.year, type_id: typeId }), {}, {
+    router.get(route('laporan.matrix', {
+        year: props.year,
+        type_id: typeId,
+        factory_id: props.factoryId ?? undefined,
+    }), {}, {
         preserveState: true,
         preserveScroll: true,
     });
 };
 
-
+const onFactoryChange = (value: string | number) => {
+    const factoryId = value === '' || value === null || value === undefined ? undefined : Number(value);
+    router.get(route('laporan.matrix', {
+        year: props.year,
+        type_id: props.typeId ?? undefined,
+        factory_id: factoryId,
+    }), {}, {
+        preserveState: true,
+        preserveScroll: true,
+    });
+};
 </script>
 
 <template>
@@ -91,13 +116,20 @@ const onTypeChange = (value: string | number) => {
                 :options="typeOptions"
                 @update:model-value="onTypeChange"
             />
+            <var-select
+                class="factory-field"
+                :model-value="String(factoryId ?? '')"
+                placeholder="Pilih pabrik"
+                :options="factoryOptions"
+                @update:model-value="onFactoryChange"
+            />
             <div class="legend">
                 <span v-for="(color, key) in matrixColors" :key="key" class="legend-item">
                     <span class="dot" :style="{ background: color }"></span>
                     {{ key === 'none' ? 'Belum Uji' : key }}
                 </span>
             </div>
-            <a class="export-btn" :href="route('laporan.matrix.export', { year, type_id: typeId ?? undefined })">
+            <a class="export-btn" :href="route('laporan.matrix.export', { year, type_id: typeId ?? undefined, factory_id: factoryId ?? undefined })">
                 <var-button type="primary" block>📊 Export Excel</var-button>
             </a>
         </div>
@@ -180,7 +212,8 @@ const onTypeChange = (value: string | number) => {
     width: 140px;
 }
 
-.type-field {
+.type-field,
+.factory-field {
     width: 240px;
 }
 
