@@ -48,6 +48,7 @@ const pageTitle = computed(() => {
     if (current === 'reports.index') return 'Laporan & Rekapitulasi';
     if (current === 'laporan.index') return 'Laporan';
     if (current === 'laporan.matrix') return 'Matriks Uji Bulanan';
+    if (current === 'laporan.internal-kalibrasi') return 'Internal Kalibrasi Record';
     if (current === 'users.index') return 'Kelola Pengguna';
     return 'SI KARTO';
 });

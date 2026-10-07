@@ -76,6 +76,8 @@ Route::middleware('auth')->group(function () {
     // Laporan
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index')
         ->middleware('permission:report.read');
+    Route::get('/laporan/internal-kalibrasi', [ReportController::class, 'internalKalibrasi'])->name('laporan.internal-kalibrasi')
+        ->middleware('permission:report.read');
     Route::get('/laporan', fn () => redirect()->route('laporan.matrix'))->name('laporan.index')
         ->middleware('permission:master.read|report.read');
 });

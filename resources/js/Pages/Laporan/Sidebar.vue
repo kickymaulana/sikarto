@@ -14,6 +14,7 @@ const menuItems = [
     { label: 'Rekap Bulanan', icon: 'calendar-month', value: 'monthly' },
     { label: 'Rekap Tahunan', icon: 'calendar-text', value: 'yearly' },
     { label: 'Status Pengujian', icon: 'chart-box-outline', value: 'status' },
+    { label: 'Internal Kalibrasi Record', icon: 'file-document-outline', value: 'internal' },
 ];
 
 const go = (value: string) => {
@@ -22,6 +23,8 @@ const go = (value: string) => {
         router.get(route('laporan.index'));
     } else if (value === 'monthly') {
         router.get(route('laporan.matrix'));
+    } else if (value === 'internal') {
+        router.get(route('laporan.internal-kalibrasi'));
     }
 };
 </script>
