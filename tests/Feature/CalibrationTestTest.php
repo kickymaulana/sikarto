@@ -391,7 +391,11 @@ class CalibrationTestTest extends TestCase
             ->has('instruments.0.capacity.groups.0.standards', 2)
             ->has('instruments.0.capacity.groups.0.standards.0.id')
             ->has('instruments.0.capacity.groups.0.standards.0.standard_value')
-            ->where('instruments.0.acceptable_limit.unit', 'gr'));
+            ->where('instruments.0.acceptable_limit.unit', 'gr')
+            ->missing('instruments.0.created_at')
+            ->missing('instruments.0.updated_at')
+            ->missing('instruments.0.factory.created_at')
+            ->missing('instruments.0.capacity.groups.0.standards.0.created_at'));
         $this->get("/masters/capacities/{$instrument->capacity_id}/edit")->assertInertia(fn (AssertableInertia $page) => $page
             ->component('Masters/Form')->has('item.groups.0.id')->has('item.groups.0.standards.0.id'));
         $items = StandardTemplate::get()->map(fn ($s) => ['standard_template_id' => $s->id, 'reading_value' => $s->standard_value])->all();

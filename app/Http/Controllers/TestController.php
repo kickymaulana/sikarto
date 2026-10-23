@@ -38,8 +38,60 @@ class TestController extends Controller
     public function create()
     {
         return Inertia::render('Tests/Create', [
-            'instruments' => Instrument::with(['capacity.groups.standards', 'factory', 'department', 'type', 'brand', 'acceptableLimit', 'specification'])
-                ->orderBy('code')->get(),
+            'instruments' => Instrument::query()
+                ->select([
+                    'id', 'code', 'factory_id', 'department_id', 'instrument_type_id',
+                    'brand_id', 'capacity_id', 'acceptable_limit_id', 'specification_id',
+                ])
+                ->with([
+                    'capacity:id,name',
+                    'capacity.groups:id,capacity_id,name,reference_media,sort_order',
+                    'capacity.groups.standards:id,standard_group_id,standard_value,sort_order',
+                    'factory:id,name',
+                    'department:id,name',
+                    'type:id,name',
+                    'brand:id,name',
+                    'acceptableLimit:id,name,min_correction,max_correction,unit',
+                    'specification:id,name,length_min,length_max,width_min,width_max,diameter_min,diameter_max,dimension_unit',
+                ])
+                ->orderBy('code')
+                ->get()
+                ->map(fn (Instrument $instrument) => [
+                    'id' => $instrument->id,
+                    'code' => $instrument->code,
+                    'factory' => $instrument->factory ? ['name' => $instrument->factory->name] : null,
+                    'department' => $instrument->department ? ['name' => $instrument->department->name] : null,
+                    'type' => $instrument->type ? ['name' => $instrument->type->name] : null,
+                    'brand' => $instrument->brand ? ['name' => $instrument->brand->name] : null,
+                    'capacity' => $instrument->capacity ? [
+                        'name' => $instrument->capacity->name,
+                        'groups' => $instrument->capacity->groups->map(fn ($group) => [
+                            'id' => $group->id,
+                            'name' => $group->name,
+                            'reference_media' => $group->reference_media,
+                            'standards' => $group->standards->map(fn ($standard) => [
+                                'id' => $standard->id,
+                                'standard_value' => $standard->standard_value,
+                            ])->all(),
+                        ])->all(),
+                    ] : null,
+                    'acceptable_limit' => $instrument->acceptableLimit ? [
+                        'name' => $instrument->acceptableLimit->name,
+                        'min_correction' => $instrument->acceptableLimit->min_correction,
+                        'max_correction' => $instrument->acceptableLimit->max_correction,
+                        'unit' => $instrument->acceptableLimit->unit,
+                    ] : null,
+                    'specification' => $instrument->specification ? [
+                        'name' => $instrument->specification->name,
+                        'length_min' => $instrument->specification->length_min,
+                        'length_max' => $instrument->specification->length_max,
+                        'width_min' => $instrument->specification->width_min,
+                        'width_max' => $instrument->specification->width_max,
+                        'diameter_min' => $instrument->specification->diameter_min,
+                        'diameter_max' => $instrument->specification->diameter_max,
+                        'dimension_unit' => $instrument->specification->dimension_unit,
+                    ] : null,
+                ]),
         ]);
     }
 
